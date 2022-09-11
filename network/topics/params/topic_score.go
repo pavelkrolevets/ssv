@@ -54,11 +54,17 @@ type TopicOpts struct {
 	// TopicWeight is the weight of the topic
 	TopicWeight float64
 	//  ExpectedMsgRate is the expected rate for the topic
-	ExpectedMsgRate       float64
-	InvalidMsgDecayTime   time.Duration
-	FirstMsgDecayTime     time.Duration
-	MeshMsgDecayTime      time.Duration
-	MeshMsgCapFactor      float64
+	ExpectedMsgRate float64
+	// InvalidMsgDecayTime defines the decay for invalid messages,
+	// passing a zero value disables scoring of message validation (P4).
+	InvalidMsgDecayTime time.Duration
+	// FirstMsgDecayTime defines the decay time for first message deliveries (P2)
+	FirstMsgDecayTime time.Duration
+	// MeshMsgDecayTime defines the decay time for mesh message deliveries (P3)
+	MeshMsgDecayTime time.Duration
+	// MeshMsgCapFactor defines the factor to use to apply on the mesh message deliveries cap (P3)
+	MeshMsgCapFactor float64
+	// MeshMsgActivationTime defines time in the mesh before penalties are being applied
 	MeshMsgActivationTime time.Duration
 	// D is the gossip degree
 	D int
