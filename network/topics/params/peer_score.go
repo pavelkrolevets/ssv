@@ -9,15 +9,34 @@ import (
 
 const (
 	gossipThreshold              = -4000
+	publishThreshold             = -8000
+	graylistThreshold            = -16000
 	defaultIPColocationThreshold = 10 // TODO: check a lower value such as in ETH (3)
 )
+
+// GetScoreThresholdState returns the threshold state of the given score
+func GetScoreThresholdState(score float64) string {
+	if score < graylistThreshold {
+		return "graylist"
+	}
+	if score < publishThreshold {
+		return "publish"
+	}
+	if score < gossipThreshold {
+		return "gossip"
+	}
+	if score < 0 {
+		return "negative"
+	}
+	return ""
+}
 
 // PeerScoreThresholds returns the thresholds to use for peer scoring
 func PeerScoreThresholds() *pubsub.PeerScoreThresholds {
 	return &pubsub.PeerScoreThresholds{
 		GossipThreshold:             gossipThreshold,
-		PublishThreshold:            -8000,
-		GraylistThreshold:           -16000,
+		PublishThreshold:            publishThreshold,
+		GraylistThreshold:           graylistThreshold,
 		AcceptPXThreshold:           100,
 		OpportunisticGraftThreshold: 5,
 	}

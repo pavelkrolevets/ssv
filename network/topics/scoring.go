@@ -35,7 +35,11 @@ func scoreInspector(logger *zap.Logger, scoreIdx peers.ScoreIndex) pubsub.Extend
 			//		Value: peerScores.IPColocationFactor,
 			//	},
 			//}
+			if peerScores == nil {
+				continue
+			}
 			logger.Debug("peer scores", zap.String("peer", pid.String()),
+				zap.String("threshold", params.GetScoreThresholdState(peerScores.Score)),
 				zap.Any("peerScores", peerScores))
 			metricPubsubPeerScoreInspect.WithLabelValues(pid.String()).Set(peerScores.Score)
 			//err := scoreIdx.Score(pid, scores...)
