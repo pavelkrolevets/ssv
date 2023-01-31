@@ -143,6 +143,7 @@ func (mh *metricsHandler) handleHighestDecideds(w http.ResponseWriter, r *http.R
 	var response struct {
 		Instances map[string][]string `json:"instances"`
 	}
+	response.Instances = make(map[string][]string)
 
 	err := mh.db.(*kv.BadgerDb).Badger().View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
