@@ -165,7 +165,7 @@ func (mh *metricsHandler) handleHighestDecideds(w http.ResponseWriter, r *http.R
 				k := item.Key()
 				start := len(roleBytes)
 				end := len(k) - 4
-				response.Instances[roleString] = append(response.Instances[roleString], string(k[start:end]))
+				response.Instances[roleString] = append(response.Instances[roleString], hex.EncodeToString(k[start:end]))
 			}
 		}
 		return nil
