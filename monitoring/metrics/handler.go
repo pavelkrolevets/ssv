@@ -18,6 +18,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
+
+	spectypes "github.com/bloxapp/ssv-spec/types"
 )
 
 // Handler handles incoming metrics requests
@@ -137,11 +139,9 @@ func (mh *metricsHandler) handleCountByCollection(w http.ResponseWriter, r *http
 	}
 }
 
-var highestDecidedKey = []byte("highest_instance")
-
 func (mh *metricsHandler) handleHighestDecideds(w http.ResponseWriter, r *http.Request) {
 	var response struct {
-		PublicKeys []string `json:"public_keys"`
+		Instances map[string][]string `json:"instances"`
 	}
 
 	err := mh.db.(*kv.BadgerDb).Badger().View(func(txn *badger.Txn) error {
@@ -150,12 +150,22 @@ func (mh *metricsHandler) handleHighestDecideds(w http.ResponseWriter, r *http.R
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		for it.Seek(highestDecidedKey); it.ValidForPrefix(highestDecidedKey); it.Next() {
-			item := it.Item()
-			k := item.Key()
-			start := len(highestDecidedKey)
-			end := len(k) - 4
-			response.PublicKeys = append(response.PublicKeys, hex.EncodeToString(k[start:end]))
+		for _, role := range []spectypes.BeaconRole{
+			spectypes.BNRoleAttester,
+			spectypes.BNRoleAggregator,
+			spectypes.BNRoleProposer,
+			spectypes.BNRoleSyncCommittee,
+			spectypes.BNRoleSyncCommitteeContribution,
+		} {
+			roleString := role.String()
+			roleBytes := []byte(roleString)
+			for it.Seek(roleBytes); it.ValidForPrefix(roleBytes); it.Next() {
+				item := it.Item()
+				k := item.Key()
+				start := len(roleBytes)
+				end := len(k) - 4
+				response.Instances[roleString] = append(response.Instances[roleString], string(k[start:end]))
+			}
 		}
 		return nil
 	})
