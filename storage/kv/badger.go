@@ -58,6 +58,11 @@ func New(options basedb.Options) (basedb.IDb, error) {
 	return &_db, nil
 }
 
+// Badger returns the underlying badger.DB instance.
+func (b *BadgerDb) Badger() *badger.DB {
+	return b.db
+}
+
 // Set save value with key to storage
 func (b *BadgerDb) Set(prefix []byte, key []byte, value []byte) error {
 	return b.db.Update(func(txn *badger.Txn) error {

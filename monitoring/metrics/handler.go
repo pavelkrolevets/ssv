@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/bloxapp/ssv/storage/basedb"
+	"github.com/bloxapp/ssv/storage/kv"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -84,6 +86,7 @@ func (mh *metricsHandler) Start(mux *http.ServeMux, addr string) error {
 		},
 	))
 	mux.HandleFunc("/database/count-by-collection", mh.handleCountByCollection)
+	mux.HandleFunc("/database/highest-decideds", mh.handleHighestDecideds)
 	mux.HandleFunc("/health", mh.handleHealth)
 
 	go func() {
@@ -127,6 +130,39 @@ func (mh *metricsHandler) handleCountByCollection(w http.ResponseWriter, r *http
 		return
 	}
 	response.Count = n
+
+	if err := json.NewEncoder(w).Encode(&response); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+var highestDecidedKey = []byte("highest_instance")
+
+func (mh *metricsHandler) handleHighestDecideds(w http.ResponseWriter, r *http.Request) {
+	var response struct {
+		PublicKeys []string `json:"public_keys"`
+	}
+
+	err := mh.db.(*kv.BadgerDb).Badger().View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Seek(highestDecidedKey); it.ValidForPrefix(highestDecidedKey); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			start := len(highestDecidedKey)
+			end := len(k) - 4
+			response.PublicKeys = append(response.PublicKeys, hex.EncodeToString(k[start:end]))
+		}
+		return nil
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	if err := json.NewEncoder(w).Encode(&response); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
