@@ -2,9 +2,10 @@ package logging
 
 import (
 	"context"
-	"go.uber.org/zap"
 	"reflect"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 func TestWithFromContext(t *testing.T) {
