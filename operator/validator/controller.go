@@ -9,6 +9,7 @@ import (
 
 	"github.com/bloxapp/ssv/logging"
 	"github.com/bloxapp/ssv/logging/fields"
+	"github.com/cornelk/hashmap"
 
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	specqbft "github.com/bloxapp/ssv-spec/qbft"
@@ -247,7 +248,24 @@ func (c *controller) GetOperatorData() *registrystorage.OperatorData {
 	return c.operatorData
 }
 
+var cache *struct {
+	a uint64
+	b uint64
+	c uint64
+	e error
+}
+var cacheLock sync.Mutex
+
 func (c *controller) GetValidatorStats(logger *zap.Logger) (uint64, uint64, uint64, error) {
+	zap.L().Debug("GetValidatorStats")
+
+	cacheLock.Lock()
+	if cache != nil {
+		cacheLock.Unlock()
+		return cache.a, cache.b, cache.c, cache.e
+	}
+	cacheLock.Unlock()
+
 	allShares, err := c.sharesStorage.GetAllShares(logger)
 	if err != nil {
 		return 0, 0, 0, err
@@ -262,6 +280,16 @@ func (c *controller) GetValidatorStats(logger *zap.Logger) (uint64, uint64, uint
 			active++
 		}
 	}
+
+	cacheLock.Lock()
+	cache = &struct {
+		a uint64
+		b uint64
+		c uint64
+		e error
+	}{uint64(len(allShares)), active, operatorShares, nil}
+	cacheLock.Unlock()
+
 	return uint64(len(allShares)), active, operatorShares, nil
 }
 
@@ -297,9 +325,15 @@ func (c *controller) handleRouterMessages(logger *zap.Logger) {
 	}
 }
 
+var shareCache = hashmap.New[string, *types.SSVShare]()
+
 // getShare returns the share of the given validator public key
 // TODO: optimize
 func (c *controller) getShare(pk spectypes.ValidatorPK) (*types.SSVShare, error) {
+	key := string(pk)
+	if share, ok := shareCache.Get(key); ok {
+		return share, nil
+	}
 	share, found, err := c.sharesStorage.GetShare(pk)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not read validator share [%s]", pk)
@@ -307,6 +341,7 @@ func (c *controller) getShare(pk spectypes.ValidatorPK) (*types.SSVShare, error)
 	if !found {
 		return nil, nil
 	}
+	shareCache.Set(key, share)
 	return share, nil
 }
 
