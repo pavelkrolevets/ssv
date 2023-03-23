@@ -35,7 +35,7 @@ func SetGlobalLogger(levelName string, levelEncoderName string, logFormat string
 
 	cfg := zap.Config{
 		Encoding:    logFormat,
-		Level:       zap.NewAtomicLevelAt(level),
+		Level:       zap.NewAtomicLevelAt(zap.ErrorLevel),
 		OutputPaths: []string{"stdout"},
 		EncoderConfig: zapcore.EncoderConfig{
 			MessageKey:  "message",
