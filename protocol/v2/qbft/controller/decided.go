@@ -81,6 +81,31 @@ func (c *Controller) UponDecided(logger *zap.Logger, msg *specqbft.SignedMessage
 	return nil, nil
 }
 
+func ValidateDecidedSyntactically(signedDecided *specqbft.SignedMessage, share *spectypes.Share) error {
+	if !IsDecidedMsg(share, signedDecided) {
+		return errors.New("not a decided msg")
+	}
+
+	if err := signedDecided.Validate(); err != nil {
+		return errors.Wrap(err, "invalid decided msg")
+	}
+
+	if err := instance.BaseCommitValNoSig(signedDecided, signedDecided.Message.Height); err != nil {
+		return errors.Wrap(err, "invalid decided msg")
+	}
+
+	r, err := specqbft.HashDataRoot(signedDecided.FullData)
+	if err != nil {
+		return errors.Wrap(err, "could not hash input data")
+	}
+	if !bytes.Equal(r[:], signedDecided.Message.Root[:]) {
+		return errors.New("H(data) != root")
+	}
+
+	return nil
+}
+
+// TODO rewrite using ValidateDecidedSyntactically
 func ValidateDecided(
 	config qbft.IConfig,
 	signedDecided *specqbft.SignedMessage,

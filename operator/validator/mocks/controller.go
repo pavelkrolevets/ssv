@@ -8,8 +8,10 @@ import (
 	reflect "reflect"
 
 	phase0 "github.com/attestantio/go-eth2-client/spec/phase0"
+	types "github.com/bloxapp/ssv-spec/types"
 	eth1 "github.com/bloxapp/ssv/eth1"
 	validator "github.com/bloxapp/ssv/protocol/v2/ssv/validator"
+	types0 "github.com/bloxapp/ssv/protocol/v2/types"
 	storage "github.com/bloxapp/ssv/registry/storage"
 	gomock "github.com/golang/mock/gomock"
 	event "github.com/prysmaticlabs/prysm/async/event"
@@ -65,6 +67,21 @@ func (m *MockController) GetOperatorData() *storage.OperatorData {
 func (mr *MockControllerMockRecorder) GetOperatorData() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOperatorData", reflect.TypeOf((*MockController)(nil).GetOperatorData))
+}
+
+// GetShare mocks base method.
+func (m *MockController) GetShare(pk types.ValidatorPK) (*types0.SSVShare, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetShare", pk)
+	ret0, _ := ret[0].(*types0.SSVShare)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetShare indicates an expected call of GetShare.
+func (mr *MockControllerMockRecorder) GetShare(pk interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShare", reflect.TypeOf((*MockController)(nil).GetShare), pk)
 }
 
 // GetValidator mocks base method.
