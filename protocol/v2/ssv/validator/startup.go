@@ -25,6 +25,10 @@ func (v *Validator) Start(logger *zap.Logger) error {
 			return nil
 		}
 		for role, r := range v.DutyRunners {
+			if role == spectypes.BNRoleProposer {
+				continue
+			}
+
 			logger := logger.With(fields.Role(role))
 			share := r.GetBaseRunner().Share
 			if share == nil { // TODO: handle missing share?

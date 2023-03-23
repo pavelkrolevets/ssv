@@ -26,10 +26,10 @@ func parseConfigLevelEncoder(levelEncoderName string) zapcore.LevelEncoder {
 }
 
 func SetGlobalLogger(levelName string, levelEncoderName string, logFormat string) error {
-	level, err := parseConfigLevel(levelName)
-	if err != nil {
-		return err
-	}
+	// level, err := parseConfigLevel(levelName)
+	// if err != nil {
+	// 	return err
+	// }
 
 	levelEncoder := parseConfigLevelEncoder(levelEncoderName)
 
