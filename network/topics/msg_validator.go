@@ -162,11 +162,11 @@ func validateQbftMessage(schedule *MessageSchedule, signedMsg *qbft.SignedMessag
 		}
 	}
 	// sig validation
-	//err := signedMsg.Signature.VerifyByOperators(signedMsg, share.DomainType, spectypes.QBFTSignatureType, share.Committee)
-	//if err != nil {
-	//	reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on qbft message")
-	//	return pubsub.ValidationReject
-	//}
+	err := signedMsg.Signature.VerifyByOperators(signedMsg, share.DomainType, spectypes.QBFTSignatureType, share.Committee)
+	if err != nil {
+		reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on qbft message")
+		return pubsub.ValidationReject
+	}
 
 	// mark message
 	schedule.MarkConsensusMessage(signerMark, signedMsg.Message.Identifier, signedMsg.Signers[0], signedMsg.Message.Round, signedMsg.Message.MsgType, plogger)
@@ -218,10 +218,10 @@ func validateDecideMessage(signedCommit *qbft.SignedMessage, schedule *MessageSc
 	}
 	// verify signature
 	///TODO: option 1, offload signature verification to this layer. option 2, do better aggregation
-	//if err := signedCommit.Signature.VerifyByOperators(signedCommit, share.DomainType, spectypes.QBFTSignatureType, share.Committee); err != nil {
-	//	reportValidationResult(ValidationResultInvalidSig, plogger, err, "decided message signature is invalid")
-	//	return pubsub.ValidationReject
-	//}
+	if err := signedCommit.Signature.VerifyByOperators(signedCommit, share.DomainType, spectypes.QBFTSignatureType, share.Committee); err != nil {
+		reportValidationResult(ValidationResultInvalidSig, plogger, err, "decided message signature is invalid")
+		return pubsub.ValidationReject
+	}
 
 	//mark decided message
 	schedule.markDecidedMsg(signedCommit, share, plogger)
