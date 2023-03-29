@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
+	"github.com/bloxapp/ssv/logging/fields"
 	"github.com/bloxapp/ssv/protocol/v2/qbft"
 	"github.com/bloxapp/ssv/protocol/v2/types"
 )
@@ -30,7 +31,8 @@ func (i *Instance) uponRoundChange(
 	}
 
 	logger.Debug("🔄 got change round",
-		zap.Uint64("round", uint64(i.State.Round)),
+		zap.Uint64("round", fields.Round(uint64(i.State.Round))),
+		zap.Uint64("msg_round", ...),
 		zap.Uint64("height", uint64(i.State.Height)),
 		zap.Any("round-change-signers", signedRoundChange.Signers))
 

@@ -1,9 +1,11 @@
-[<img src="./docs/resources/bloxstaking_header_image.png" >](https://www.bloxstaking.com/)
+<h1 align="center">SSV: distributed staking ecosystem for Ethereum</h1>
 
-<br>
-<br>
+<p align="center">
+A decentralized, trust-minimized and scalable protocol that empowers Ethereum validators<br/>
+to break beyond the constraints of a single node and flourish across a vibrant network of interconnected parties.
+</p>
 
-# SSV - Secret Shared Validator
+<center>
 
 [![API Reference](
 https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
@@ -16,28 +18,55 @@ https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/6874
 [comment]: <> ([![Go Report Card]&#40;https://goreportcard.com/badge/github.com/ethereum/eth2-ssv&#41;]&#40;https://goreportcard.com/report/github.com/ethereum/eth2-ssv&#41;)
 
 [comment]: <> ([![Travis]&#40;https://travis-ci.com/ethereum/eth2-ssv.svg?branch=stage&#41;]&#40;https://travis-ci.com/ethereum/eth2-ssv&#41;)
+</center>
 
-## Introduction
+<center>
+<img src="./ssv-network-full-logo.png" width="200">
 
-Secret Shared Validator ('SSV') is a unique technology that enables the distributed control and operation of an Ethereum validator.
+[Documentation](https://docs.ssv.network/learn/introduction)
+</center>
 
-SSV uses an MPC threshold scheme with a consensus layer on top ([Istanbul BFT](https://arxiv.org/pdf/2002.03613.pdf)), 
-that governs the network. \
-Its core strength is in its robustness and fault tolerance which leads the way for an open network of staking operators 
-to run validators in a decentralized and trustless way.
+## Repositories
 
-## Information
+- 🔑 [ssv-keys](https://github.com/bloxapp/ssv-keys): CLI to break apart a validator's private key into a set of shares to be held by different operators.
+- 📜 [ssv-network](https://github.com/bloxapp/ssv-network/): smart contracts which onboard validators, operators and their shares.
+- ⚙️ [ssv](https://github.com/bloxapp/ssv) (this repo): p2p node which operators run to participate in the network and coordinate to perform the duties for their validators. Governed by [QBFT](https://entethalliance.github.io/client-spec/qbft_spec.html).
 
-### General SSV information (Semi technical read)
-* Article by [Blox](https://medium.com/bloxstaking/an-introduction-to-secret-shared-validators-ssv-for-ethereum-2-0-faf49efcabee)
+## Solo vs. Centralized vs. SSV
 
-### Technical iBFT and SSV read
+| Scenario | Solo | Centralized | SSV |
+| --- | --- | --- | --- |
+| Hardware/network failure | ❌ Single machine | ⚠️ Opaque | ✅ 3+ machines |
+| Crash in one of the Eth clients | ❌ Single client | ⚠️ Opaque | ✅ 3+ clients |
+| Slashing protection failure | ⚠️ Single signer | ⚠️ Opaque | ⚠️ 3+ signers |
+| Setup complexity | ★ Hard | ★★★ Easy | ★★ Reasonable |
+
+## Getting Started
+
+Choose your path!
+
+### ⚔ Become an Operator
+Join the network by [installing an SSV node](https://docs.ssv.network/run-a-node/operator-node/installation) and [registering as an operator](https://docs.ssv.network/run-a-node/operator-node/joining-the-network).
+
+### 🏹 Become a Liquidator
+
+Liquidators run a special node that scouts for out-of-balance validators and liquidates them. [Learn more here](https://docs.ssv.network/run-a-node/liquidator-node).
+
+### 🛠️ Build on SSV
+Anyone can register a distributed validator using SSV's smart contracts. [Get started here](https://docs.ssv.network/developers/get-started).
+
+## Links
+
+### Articles
+- [An Introduction to Secret Shared Validators (SSV) for Ethereum 2.0](https://medium.com/bloxstaking/an-introduction-to-secret-shared-validators-ssv-for-ethereum-2-0-faf49efcabee)
+
+### Papers
 * [iBFT Paper](https://arxiv.org/pdf/2002.03613.pdf)
     * [Fast sync for current instance](./ibft/sync/speedup/README.md)
 * [iBFT annotated paper (By Blox)](./ibft/IBFT.md)
 * [EIP650](https://github.com/ethereum/EIPs/issues/650)
 * [Security proof for n-t honest parties](https://notes.ethereum.org/DYU-NrRBTxS3X0fu_MidnA)
-* [MEV Research - Block proposer/ builder separation in SSV](https://hackmd.io/DHt98PC_S_60NbnW4Wgssg)
+* [MEV Research - Block proposer/builder separation in SSV](https://hackmd.io/DHt98PC_S_60NbnW4Wgssg)
 
 
 ## Getting Started
@@ -70,8 +99,3 @@ also included in our repository in the `LICENSE` file.
 The eth2-ssv binaries (i.e. all code inside of the `cmd` directory) is licensed under the
 [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html), also
 included in our repository in the `LICENSE` file.
-
-## Road Map
-
-For detailed roadmap please check out [ROADMAP.md](./ROADMAP.md) 
-
