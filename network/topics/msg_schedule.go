@@ -214,7 +214,7 @@ func (signerMark *mark) isConsensusMessageTimely(height qbft.Height, round qbft.
 	} else if signerMark.HighestDecided == height {
 		// TODO: ugly hack for height == 0 case
 		if height != 0 || signerMark.MarkedDecided > 0 {
-			plog.Warn("a consensus message for the same height was already decided", zap.Any("height", height))
+			plog.Warn("a qbft message arrived for the same height was already decided", zap.Any("height", height))
 			// assume a late message and don't penalize
 			// TODO maybe penalize every 2-3 messages?
 			return false, pubsub.ValidationIgnore

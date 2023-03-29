@@ -11,18 +11,23 @@ import (
 	"github.com/bloxapp/ssv/protocol/v2/types"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/peer"
+
 	"go.uber.org/zap"
 )
 
 // MsgValidatorFunc represents a message validator
-type MsgValidatorFunc = func(ctx context.Context, p peer.ID, msg *pubsub.Message) pubsub.ValidationResult
+type MsgValidatorFunc = func(p peer.ID, msg *pubsub.Message) pubsub.ValidationResult
+
+// TODO change ugly scope
+var sigChan = make(chan *signatureVerifier, verifierLimit)
 
 // NewSSVMsgValidator creates a new msg validator that validates message structure,
 // and checks that the message was sent on the right topic.
 // TODO - copying plogger may cause GC issues, consider using a pool
-func NewSSVMsgValidator(plogger zap.Logger, fork forks.Fork, valController validator.Controller) func(ctx context.Context, p peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
+func NewSSVMsgValidator(ctx context.Context, fork forks.Fork, valController validator.Controller, plogger zap.Logger) MsgValidatorFunc {
 	schedule := NewMessageSchedule()
-	return func(ctx context.Context, p peer.ID, pmsg *pubsub.Message) pubsub.ValidationResult {
+	go verifierRoutine(ctx, sigChan)
+	return func(p peer.ID, pmsg *pubsub.Message) pubsub.ValidationResult {
 		plog := plogger.With(zap.String("peerID", pmsg.GetFrom().String()))
 		plog.Debug("msg validation started")
 		topic := pmsg.GetTopic()
@@ -115,7 +120,7 @@ func validateConsensusMsg(ctx context.Context, signedMsg *qbft.SignedMessage, sh
 
 	// if isDecided msg (this propagates to all topics)
 	if controller.IsDecidedMsg(&share.Share, signedMsg) {
-		return validateDecideMessage(signedMsg, schedule, plogger, share)
+		return validateDecideMessage(ctx, signedMsg, schedule, plogger, share)
 	}
 
 	// if non-decided msg and I am a committee-validator
@@ -135,10 +140,10 @@ func validateConsensusMsg(ctx context.Context, signedMsg *qbft.SignedMessage, sh
 	// Full validation of messages
 	//mark consensus message
 
-	return validateQbftMessage(schedule, signedMsg, plogger, share)
+	return validateQbftMessage(ctx, schedule, signedMsg, plogger, share)
 }
 
-func validateQbftMessage(schedule *MessageSchedule, signedMsg *qbft.SignedMessage, plogger *zap.Logger, share *types.SSVShare) pubsub.ValidationResult {
+func validateQbftMessage(ctx context.Context, schedule *MessageSchedule, signedMsg *qbft.SignedMessage, plogger *zap.Logger, share *types.SSVShare) pubsub.ValidationResult {
 	plogger.Info("validating qbft message")
 	markLockID := markLockID(signedMsg.Message.Identifier, signedMsg.Signers[0])
 	// If we don't lock we may have a race between findMark and markConsensusMsg
@@ -162,7 +167,7 @@ func validateQbftMessage(schedule *MessageSchedule, signedMsg *qbft.SignedMessag
 		}
 	}
 	// sig validation
-	err := signedMsg.Signature.VerifyByOperators(signedMsg, share.DomainType, spectypes.QBFTSignatureType, share.Committee)
+	_, err := validateWithBatchVerifier(ctx, signedMsg, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
 	if err != nil {
 		reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on qbft message")
 		return pubsub.ValidationReject
@@ -179,7 +184,7 @@ func validateQbftMessage(schedule *MessageSchedule, signedMsg *qbft.SignedMessag
 	return pubsub.ValidationAccept
 }
 
-func validateDecideMessage(signedCommit *qbft.SignedMessage, schedule *MessageSchedule, plogger *zap.Logger, share *types.SSVShare) pubsub.ValidationResult {
+func validateDecideMessage(ctx context.Context, signedCommit *qbft.SignedMessage, schedule *MessageSchedule, plogger *zap.Logger, share *types.SSVShare) pubsub.ValidationResult {
 	plogger = plogger.
 		With(zap.String("msgType", "decided")).
 		With(zap.Any("signers", signedCommit.Signers)).
@@ -216,13 +221,13 @@ func validateDecideMessage(signedCommit *qbft.SignedMessage, schedule *MessageSc
 		reportValidationResult(ValidationResultSyntacticCheck, plogger, err, "decided message is not syntactically valid")
 		return pubsub.ValidationReject
 	}
-	// verify signature
-	///TODO: option 1, offload signature verification to this layer. option 2, do better aggregation
-	if err := signedCommit.Signature.VerifyByOperators(signedCommit, share.DomainType, spectypes.QBFTSignatureType, share.Committee); err != nil {
-		reportValidationResult(ValidationResultInvalidSig, plogger, err, "decided message signature is invalid")
+
+	// sig validation
+	_, err := validateWithBatchVerifier(ctx, signedCommit, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
+	if err != nil {
+		reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on decided message")
 		return pubsub.ValidationReject
 	}
-
 	//mark decided message
 	schedule.markDecidedMsg(signedCommit, share, plogger)
 	return pubsub.ValidationAccept
