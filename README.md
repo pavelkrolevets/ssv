@@ -37,8 +37,8 @@ https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/6874
 | Scenario | Solo | Centralized | SSV |
 | --- | --- | --- | --- |
 | Hardware/network failure | ❌ Single machine | ⚠️ Opaque | ✅ 3+ machines |
-| Crash in one of the Eth clients | ❌ Single client | ⚠️ Opaque | ✅ 3+ clients |
-| Slashing protection failure | ⚠️ Single signer | ⚠️ Opaque | ⚠️ 3+ signers |
+| Liveness failure in 1 of the clients | ❌ Single client | ⚠️ Opaque | ✅ 3+ clients |
+| Slashing protection failure | ⚠️ Single signer | ⚠️ Opaque | ✅ 3+ signers |
 | Setup complexity | ★ Hard | ★★★ Easy | ★★ Reasonable |
 
 ## Getting Started
@@ -46,14 +46,16 @@ https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/6874
 Choose your path!
 
 ### ⚔ Become an Operator
+Operators 
+
 Join the network by [installing an SSV node](https://docs.ssv.network/run-a-node/operator-node/installation) and [registering as an operator](https://docs.ssv.network/run-a-node/operator-node/joining-the-network).
 
 ### 🏹 Become a Liquidator
 
-Liquidators run a special node that scouts for out-of-balance validators and liquidates them. [Learn more here](https://docs.ssv.network/run-a-node/liquidator-node).
+Liquidators run a special node that scouts for out-of-balance validators and liquidates them. [Get started here](https://docs.ssv.network/run-a-node/liquidator-node).
 
 ### 🛠️ Build on SSV
-Anyone can register a distributed validator using SSV's smart contracts. [Get started here](https://docs.ssv.network/developers/get-started).
+Anyone can register a distributed validator via the smart contracts. [Get started here](https://docs.ssv.network/developers/get-started).
 
 ## Links
 
