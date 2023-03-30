@@ -26,27 +26,36 @@ https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/6874
 [Documentation](https://docs.ssv.network/learn/introduction)
 </center>
 
-## Repositories
+## Overview
 
-- 🔑 [ssv-keys](https://github.com/bloxapp/ssv-keys): CLI to break apart a validator's private key into a set of shares to be held by different operators.
-- 📜 [ssv-network](https://github.com/bloxapp/ssv-network/): smart contracts which onboard validators, operators and their shares.
-- ⚙️ [ssv](https://github.com/bloxapp/ssv) (this repo): p2p node which operators run to participate in the network and coordinate to perform the duties for their validators. Governed by [QBFT](https://entethalliance.github.io/client-spec/qbft_spec.html).
+Go implementation of the SSV node, which operators run to participate in the network and coordinate to perform the duties for their validators. Governed by [QBFT](https://entethalliance.github.io/client-spec/qbft_spec.html).
 
-## Solo vs. Centralized vs. SSV
+## Building from Source
 
-| Scenario | Solo | Centralized | SSV |
-| --- | --- | --- | --- |
-| Hardware/network failure | ❌ Single machine | ⚠️ Opaque | ✅ 3+ machines |
-| Liveness failure in 1 of the clients | ❌ Single client | ⚠️ Opaque | ✅ 3+ clients |
-| Slashing protection failure | ⚠️ Single signer | ⚠️ Opaque | ✅ 3+ signers |
-| Setup complexity | ★ Hard | ★★★ Easy | ★★ Reasonable |
+Requirements:
+- Go 1.19+
+- make
 
-## Getting Started
+Clone this repo:
+```bash
+git clone https://github.com/bloxapp/ssv
+```
+
+Building:
+```bash
+make build
+```
+
+Building with Docker:
+```bash
+make docker
+```
+
+## Quickstart
 
 Choose your path!
 
 ### ⚔ Become an Operator
-Operators 
 
 Join the network by [installing an SSV node](https://docs.ssv.network/run-a-node/operator-node/installation) and [registering as an operator](https://docs.ssv.network/run-a-node/operator-node/joining-the-network).
 
@@ -56,6 +65,12 @@ Liquidators run a special node that scouts for out-of-balance validators and liq
 
 ### 🛠️ Build on SSV
 Anyone can register a distributed validator via the smart contracts. [Get started here](https://docs.ssv.network/developers/get-started).
+
+## Repositories
+
+- 🔑 [ssv-keys](https://github.com/bloxapp/ssv-keys): CLI to break apart a validator's private key into a set of shares to be held by different operators.
+- 📜 [ssv-network](https://github.com/bloxapp/ssv-network/): smart contracts which onboard validators, operators and their shares.
+- ⚙️ [ssv](https://github.com/bloxapp/ssv) (this repo): p2p node which operators run to participate in the network and coordinate to perform the duties for their validators. Governed by [QBFT](https://entethalliance.github.io/client-spec/qbft_spec.html).
 
 ## Links
 
