@@ -18,7 +18,7 @@ import (
 // MsgValidatorFunc represents a message validator
 type MsgValidatorFunc = func(p peer.ID, msg *pubsub.Message) pubsub.ValidationResult
 
-// TODO change ugly scope
+// TODO change ugly scope ...
 //var sigChan = make(chan *signatureVerifier, verifierLimit)
 
 // NewSSVMsgValidator creates a new msg validator that validates message structure,
