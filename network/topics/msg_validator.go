@@ -26,7 +26,7 @@ var sigChan = make(chan *signatureVerifier, verifierLimit)
 // TODO - copying plogger may cause GC issues, consider using a pool
 func NewSSVMsgValidator(ctx context.Context, fork forks.Fork, valController validator.Controller, plogger zap.Logger) MsgValidatorFunc {
 	schedule := NewMessageSchedule()
-	go verifierRoutine(ctx, sigChan)
+	//go verifierRoutine(ctx, sigChan)
 	return func(p peer.ID, pmsg *pubsub.Message) pubsub.ValidationResult {
 		plog := plogger.With(zap.String("peerID", pmsg.GetFrom().String()))
 		plog.Debug("msg validation started")
@@ -167,11 +167,11 @@ func validateQbftMessage(ctx context.Context, schedule *MessageSchedule, signedM
 		}
 	}
 	// sig validation
-	_, err := validateWithBatchVerifier(ctx, signedMsg, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
-	if err != nil {
-		reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on qbft message")
-		return pubsub.ValidationReject
-	}
+	//_, err := validateWithBatchVerifier(ctx, signedMsg, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
+	//if err != nil {
+	//	reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on qbft message")
+	//	return pubsub.ValidationReject
+	//}
 
 	// mark message
 	schedule.MarkConsensusMessage(signerMark, signedMsg.Message.Identifier, signedMsg.Signers[0], signedMsg.Message.Round, signedMsg.Message.MsgType, plogger)
@@ -223,11 +223,11 @@ func validateDecideMessage(ctx context.Context, signedCommit *qbft.SignedMessage
 	}
 
 	// sig validation
-	_, err := validateWithBatchVerifier(ctx, signedCommit, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
-	if err != nil {
-		reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on decided message")
-		return pubsub.ValidationReject
-	}
+	//_, err := validateWithBatchVerifier(ctx, signedCommit, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
+	//if err != nil {
+	//	reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on decided message")
+	//	return pubsub.ValidationReject
+	//}
 	//mark decided message
 	schedule.markDecidedMsg(signedCommit, share, plogger)
 	return pubsub.ValidationAccept
