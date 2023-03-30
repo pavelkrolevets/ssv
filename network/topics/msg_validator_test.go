@@ -1,7 +1,6 @@
 package topics
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"github.com/bloxapp/ssv-spec/qbft"
@@ -31,7 +30,7 @@ func TestMsgValidator(t *testing.T) {
 	logger := zap.L()
 	f := genesis.ForkGenesis{}
 	controller := mocks.NewMockController(ctrl)
-	mv := NewSSVMsgValidator(context.Background(), &f, controller, *logger)
+	mv := NewSSVMsgValidator(&f, controller, *logger)
 	controller.EXPECT().GetShare(gomock.Any()).Return(&types.SSVShare{}, nil)
 	require.NotNil(t, mv)
 
@@ -112,7 +111,7 @@ func TestSSVMsgValidator_QBFT(t *testing.T) {
 	share, _ := controller.GetShare(valPK)
 
 	t.Run("simple happy flow", func(t *testing.T) {
-		mv := NewSSVMsgValidator(context.Background(), &f, controller, *logger)
+		mv := NewSSVMsgValidator(&f, controller, *logger)
 		require.NotNil(t, mv)
 		msgs := []*qbft.SignedMessage{
 			testingutils.TestingProposalMessage(ks.Shares[1], spectypes.OperatorID(1)),
@@ -154,7 +153,7 @@ func TestSSVMsgValidator_QBFT(t *testing.T) {
 	})
 
 	t.Run("roundchange comes too soon", func(t *testing.T) {
-		mv := NewSSVMsgValidator(context.Background(), &f, controller, *logger)
+		mv := NewSSVMsgValidator(&f, controller, *logger)
 		require.NotNil(t, mv)
 
 		msgs := []*qbft.SignedMessage{
@@ -191,7 +190,7 @@ func TestSSVMsgValidator_QBFT(t *testing.T) {
 	})
 
 	t.Run("roundchange comes on time", func(t *testing.T) {
-		mv := NewSSVMsgValidator(context.Background(), &f, controller, *logger)
+		mv := NewSSVMsgValidator(&f, controller, *logger)
 		require.NotNil(t, mv)
 
 		msgs := []*qbft.SignedMessage{
@@ -264,7 +263,7 @@ func BenchmarkSSVMsgValidator(b *testing.B) {
 		},
 	}, nil).AnyTimes()
 	share, _ := controller.GetShare(valPK)
-	mv := NewSSVMsgValidator(context.Background(), &f, controller, *logger)
+	mv := NewSSVMsgValidator(&f, controller, *logger)
 	require.NotNil(b, mv)
 	msgs := []*qbft.SignedMessage{
 		testingutils.TestingProposalMessage(ks.Shares[1], spectypes.OperatorID(1)),
