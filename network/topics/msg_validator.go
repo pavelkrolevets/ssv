@@ -1,6 +1,7 @@
 package topics
 
 import (
+	"context"
 	"github.com/bloxapp/ssv-spec/qbft"
 	spectypes "github.com/bloxapp/ssv-spec/types"
 	"github.com/bloxapp/ssv/logging/fields"
@@ -15,7 +16,7 @@ import (
 )
 
 // MsgValidatorFunc represents a message validator
-type MsgValidatorFunc = func(p peer.ID, msg *pubsub.Message) pubsub.ValidationResult
+type MsgValidatorFunc = func(ctx context.Context, p peer.ID, msg *pubsub.Message) pubsub.ValidationResult
 
 // TODO change ugly scope ...
 //var sigChan = make(chan *signatureVerifier, verifierLimit)
@@ -26,7 +27,7 @@ type MsgValidatorFunc = func(p peer.ID, msg *pubsub.Message) pubsub.ValidationRe
 func NewSSVMsgValidator(fork forks.Fork, valController validator.Controller, plogger zap.Logger) MsgValidatorFunc {
 	schedule := NewMessageSchedule()
 	//go verifierRoutine(ctx, sigChan)
-	return func(p peer.ID, pmsg *pubsub.Message) pubsub.ValidationResult {
+	return func(ctx context.Context, p peer.ID, pmsg *pubsub.Message) pubsub.ValidationResult {
 		plog := plogger.With(zap.String("peerID", pmsg.GetFrom().String()))
 		plog.Debug("msg validation started")
 		topic := pmsg.GetTopic()

@@ -1,6 +1,7 @@
 package topics
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"github.com/bloxapp/ssv-spec/qbft"
@@ -44,7 +45,7 @@ func TestMsgValidator(t *testing.T) {
 		require.NoError(t, err)
 		topics := f.ValidatorTopicID(pk)
 		pmsg := newPBMsg(raw, f.GetTopicFullName(topics[0]), []byte(peerID))
-		res := mv("peerID", pmsg)
+		res := mv(context.Background(), "peerID", pmsg)
 		// TODO: make it accept or delete test
 		require.Equal(t, res, pubsub.ValidationReject)
 	})
@@ -66,7 +67,7 @@ func TestMsgValidator(t *testing.T) {
 
 	t.Run("empty message", func(t *testing.T) {
 		pmsg := newPBMsg([]byte{}, "xxx", []byte{})
-		res := mv("xxxx", pmsg)
+		res := mv(context.Background(), "xxxx", pmsg)
 		require.Equal(t, res, pubsub.ValidationReject)
 	})
 
@@ -77,7 +78,7 @@ func TestMsgValidator(t *testing.T) {
 	//	raw, err := msg.Encode()
 	//	require.NoError(t, err)
 	//	pmsg := newPBMsg(raw, "xxx", []byte{})
-	//	res := mv("xxxx", pmsg)
+	//	res := mv(context.Background(), "xxxx", pmsg)
 	//	require.Equal(t, res, pubsub.ValidationReject)
 	// })
 }
@@ -147,7 +148,7 @@ func TestSSVMsgValidator_QBFT(t *testing.T) {
 			require.NoError(t, err)
 			topics := f.ValidatorTopicID(valPK)
 			pmsg := newPBMsg(raw, f.GetTopicFullName(topics[0]), []byte(peerID))
-			validationResult := mv(peerID, pmsg)
+			validationResult := mv(context.Background(), peerID, pmsg)
 			require.Equal(t, pubsub.ValidationAccept, validationResult, "failed on message %d", i+1)
 		}
 	})
@@ -179,7 +180,7 @@ func TestSSVMsgValidator_QBFT(t *testing.T) {
 			require.NoError(t, err)
 			topics := f.ValidatorTopicID(valPK)
 			pmsg := newPBMsg(raw, f.GetTopicFullName(topics[0]), []byte("peerID"))
-			validationResult := mv("peerID", pmsg)
+			validationResult := mv(context.Background(), "peerID", pmsg)
 			// if roundchange message, expect reject
 			if i == 4 {
 				require.Equal(t, pubsub.ValidationReject, validationResult, "failed on message %d", i+1)
@@ -224,7 +225,7 @@ func TestSSVMsgValidator_QBFT(t *testing.T) {
 				// TODO: mock time
 				<-time.After(2 * time.Second)
 			}
-			validationResult := mv("peerID", pmsg)
+			validationResult := mv(context.Background(), "peerID", pmsg)
 			if i == 5 {
 				// reject message with past round
 				require.Equal(t, pubsub.ValidationReject, validationResult, "failed on message %d", i+1)
@@ -290,7 +291,7 @@ func BenchmarkSSVMsgValidator(b *testing.B) {
 		pmsg := newPBMsg(raw, f.GetTopicFullName(topics[0]), []byte(peerID))
 		b.Run(fmt.Sprintf("message %d", i), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				mv(peerID, pmsg)
+				mv(context.Background(), peerID, pmsg)
 			}
 		})
 	}
