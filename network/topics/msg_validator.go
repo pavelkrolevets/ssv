@@ -19,7 +19,7 @@ import (
 type MsgValidatorFunc = func(p peer.ID, msg *pubsub.Message) pubsub.ValidationResult
 
 // TODO change ugly scope
-var sigChan = make(chan *signatureVerifier, verifierLimit)
+//var sigChan = make(chan *signatureVerifier, verifierLimit)
 
 // NewSSVMsgValidator creates a new msg validator that validates message structure,
 // and checks that the message was sent on the right topic.
