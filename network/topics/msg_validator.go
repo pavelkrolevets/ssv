@@ -19,7 +19,7 @@ import (
 type MsgValidatorFunc = func(ctx context.Context, p peer.ID, msg *pubsub.Message) pubsub.ValidationResult
 
 // TODO change ugly scope ...
-//var sigChan = make(chan *signatureVerifier, verifierLimit)
+var sigChan = make(chan *signatureVerifier, verifierLimit)
 
 // NewSSVMsgValidator creates a new msg validator that validates message structure,
 // and checks that the message was sent on the right topic.
@@ -55,7 +55,7 @@ func NewSSVMsgValidator(fork forks.Fork, valController validator.Controller, plo
 		//	return pubsub.ValidationAccept
 		//}
 
-		return ValidateSSVMsg(msg, valController, schedule, plog)
+		return ValidateSSVMsg(ctx, msg, valController, schedule, plog)
 
 		// Check if the message was sent on the right topic.
 		// currentTopic := pmsg.GetTopic()
@@ -72,7 +72,7 @@ func NewSSVMsgValidator(fork forks.Fork, valController validator.Controller, plo
 	}
 }
 
-func ValidateSSVMsg(msg *spectypes.SSVMessage, valController validator.Controller, schedule *MessageSchedule, plogger *zap.Logger) pubsub.ValidationResult {
+func ValidateSSVMsg(ctx context.Context, msg *spectypes.SSVMessage, valController validator.Controller, schedule *MessageSchedule, plogger *zap.Logger) pubsub.ValidationResult {
 	plogger = plogger.With(fields.PubKey(msg.MsgID.GetPubKey()), fields.Role(msg.MsgID.GetRoleType()))
 	switch msg.MsgType {
 	case spectypes.SSVConsensusMsgType:
@@ -87,7 +87,7 @@ func ValidateSSVMsg(msg *spectypes.SSVMessage, valController validator.Controlle
 			reportValidationResult(validationResultEncoding, plogger, err, "")
 			return pubsub.ValidationReject
 		}
-		return validateConsensusMsg(&signedMsg, share, schedule, plogger)
+		return validateConsensusMsg(ctx, &signedMsg, share, schedule, plogger)
 	default:
 		return pubsub.ValidationAccept
 	}
@@ -100,7 +100,7 @@ All decided msgs are processed the same, out of instance
 All valid future msgs are saved in a container and can trigger the highest decided future msg
 All other msgs (not future or decided) are processed normally by an existing instance (if found)
 */
-func validateConsensusMsg(signedMsg *qbft.SignedMessage, share *types.SSVShare, schedule *MessageSchedule, plogger *zap.Logger) pubsub.ValidationResult {
+func validateConsensusMsg(ctx context.Context, signedMsg *qbft.SignedMessage, share *types.SSVShare, schedule *MessageSchedule, plogger *zap.Logger) pubsub.ValidationResult {
 	plogger = plogger.With(zap.Any("msgType", signedMsg.Message.MsgType), zap.Any("msgRound", signedMsg.Message.Round),
 		zap.Any("msgHeight", signedMsg.Message.Height), zap.Any("signers", signedMsg.Signers))
 
@@ -120,7 +120,7 @@ func validateConsensusMsg(signedMsg *qbft.SignedMessage, share *types.SSVShare, 
 
 	// if isDecided msg (this propagates to all topics)
 	if controller.IsDecidedMsg(&share.Share, signedMsg) {
-		return validateDecideMessage(signedMsg, schedule, plogger, share)
+		return validateDecideMessage(ctx, signedMsg, schedule, plogger, share)
 	}
 
 	// if non-decided msg and I am a committee-validator
@@ -140,10 +140,10 @@ func validateConsensusMsg(signedMsg *qbft.SignedMessage, share *types.SSVShare, 
 	// Full validation of messages
 	//mark consensus message
 
-	return validateQbftMessage(schedule, signedMsg, plogger, share)
+	return validateQbftMessage(ctx, schedule, signedMsg, plogger, share)
 }
 
-func validateQbftMessage(schedule *MessageSchedule, signedMsg *qbft.SignedMessage, plogger *zap.Logger, share *types.SSVShare) pubsub.ValidationResult {
+func validateQbftMessage(ctx context.Context, schedule *MessageSchedule, signedMsg *qbft.SignedMessage, plogger *zap.Logger, share *types.SSVShare) pubsub.ValidationResult {
 	plogger.Info("validating qbft message")
 	markLockID := markLockID(signedMsg.Message.Identifier, signedMsg.Signers[0])
 	// If we don't lock we may have a race between findMark and markConsensusMsg
@@ -167,11 +167,11 @@ func validateQbftMessage(schedule *MessageSchedule, signedMsg *qbft.SignedMessag
 		}
 	}
 	// sig validation
-	//_, err := validateWithBatchVerifier(ctx, signedMsg, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
-	//if err != nil {
-	//	reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on qbft message")
-	//	return pubsub.ValidationReject
-	//}
+	_, err := validateWithBatchVerifier(ctx, signedMsg, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
+	if err != nil {
+		reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on qbft message")
+		return pubsub.ValidationReject
+	}
 
 	// mark message
 	schedule.MarkConsensusMessage(signerMark, signedMsg.Message.Identifier, signedMsg.Signers[0], signedMsg.Message.Round, signedMsg.Message.MsgType, plogger)
@@ -184,7 +184,7 @@ func validateQbftMessage(schedule *MessageSchedule, signedMsg *qbft.SignedMessag
 	return pubsub.ValidationAccept
 }
 
-func validateDecideMessage(signedCommit *qbft.SignedMessage, schedule *MessageSchedule, plogger *zap.Logger, share *types.SSVShare) pubsub.ValidationResult {
+func validateDecideMessage(ctx context.Context, signedCommit *qbft.SignedMessage, schedule *MessageSchedule, plogger *zap.Logger, share *types.SSVShare) pubsub.ValidationResult {
 	plogger = plogger.
 		With(zap.String("msgType", "decided")).
 		With(zap.Any("signers", signedCommit.Signers)).
@@ -222,12 +222,12 @@ func validateDecideMessage(signedCommit *qbft.SignedMessage, schedule *MessageSc
 		return pubsub.ValidationReject
 	}
 
-	// sig validation
-	//_, err := validateWithBatchVerifier(ctx, signedCommit, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
-	//if err != nil {
-	//	reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on decided message")
-	//	return pubsub.ValidationReject
-	//}
+	//sig validation
+	_, err := validateWithBatchVerifier(ctx, signedCommit, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
+	if err != nil {
+		reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on decided message")
+		return pubsub.ValidationReject
+	}
 	//mark decided message
 	schedule.markDecidedMsg(signedCommit, share, plogger)
 	return pubsub.ValidationAccept
