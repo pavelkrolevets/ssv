@@ -116,6 +116,11 @@ func TestIsTimelyDecidedMessage(t *testing.T) {
 	require.True(t, isTimely, "message should be timely because threshold hasn't been reached")
 	s.markDecidedMessage(decidedMsgId, []types.OperatorID{0, 1, 2}, qbft.FirstHeight, 3, zap.L())
 	isTimely = s.isTimelyDecidedMessage(decidedMsgId, []types.OperatorID{0, 1, 2}, qbft.FirstHeight, zap.L())
+	s.markDecidedMessage(decidedMsgId, []types.OperatorID{0, 1, 2}, qbft.FirstHeight, 3, zap.L())
+	isTimely = s.isTimelyDecidedMessage(decidedMsgId, []types.OperatorID{0, 1, 2}, qbft.FirstHeight, zap.L())
+	require.True(t, isTimely, "message should be timely because threshold hasn't been reached")
+	s.markDecidedMessage(decidedMsgId, []types.OperatorID{0, 1, 2}, qbft.FirstHeight, 3, zap.L())
+	isTimely = s.isTimelyDecidedMessage(decidedMsgId, []types.OperatorID{0, 1, 2}, qbft.FirstHeight, zap.L())
 	require.True(t, isTimely, "message should be timely because threshold hasn't been reached")
 	s.markDecidedMessage(decidedMsgId, []types.OperatorID{0, 1, 2}, qbft.FirstHeight, 3, zap.L())
 	isTimely = s.isTimelyDecidedMessage(decidedMsgId, []types.OperatorID{0, 1, 2}, qbft.FirstHeight, zap.L())
@@ -147,11 +152,13 @@ func TestHasBetterMsg(t *testing.T) {
 			PrepareJustification:     nil,
 		},
 	}
-	require.False(t, s.hasBetterMsg(signedMsg))
-	s.markDecidedMessage(decidedMsgId, []types.OperatorID{0, 1, 2, 3}, qbft.FirstHeight, 3, zap.L())
-	require.False(t, s.hasBetterMsg(signedMsg))
-	s.markDecidedMessage(decidedMsgId, []types.OperatorID{0, 1, 2, 3}, qbft.FirstHeight, 4, zap.L())
-	require.True(t, s.hasBetterMsg(signedMsg))
+	betterOrSimilarMsg, result := s.hasBetterOrSimilarMsg(signedMsg)
+	require.False(t, betterOrSimilarMsg)
+	require.Equal(t, pubsub.ValidationAccept, result)
+	s.markDecidedMessage(decidedMsgId, []types.OperatorID{1, 2, 3}, qbft.FirstHeight, 3, zap.L())
+	betterOrSimilarMsg, result = s.hasBetterOrSimilarMsg(signedMsg)
+	require.True(t, betterOrSimilarMsg)
+	require.Equal(t, pubsub.ValidationIgnore, result)
 }
 
 // TestIsConsensusMessageTimely tests isConsensusMessageTimely.

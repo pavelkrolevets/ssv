@@ -202,9 +202,10 @@ func validateDecideMessage(ctx context.Context, signedCommit *qbft.SignedMessage
 	// Mainly to have better statistics on commitments with a full signer set
 	// TODO can it cause liveness failure?
 	// if a different message is not better, then theoretically a better message should be broadcasted by at least one node
-	if schedule.hasBetterMsg(signedCommit) {
-		reportValidationResult(ValidationResultBetterMessage, plogger, nil, "better decided message")
-		return pubsub.ValidationIgnore
+	hasBetterOrSimilarMsg, validationResult := schedule.hasBetterOrSimilarMsg(signedCommit)
+	if hasBetterOrSimilarMsg {
+		reportValidationResult(ValidationResultBetterMessage, plogger, nil, "better or similar decided message")
+		return validationResult
 	}
 
 	//check if timely decided

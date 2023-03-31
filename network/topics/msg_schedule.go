@@ -28,6 +28,9 @@ const (
 	QbftSimilarMessagesSlack = 0
 	RoundSlack               = 0
 	NetLatency               = time.Millisecond * 1750
+	// BetterOrSimilarMsgThreshold is the number of better or similar messages we need to see before we start rejecting.
+	// Calculating the optimal bound is not as simple as it seems, so we just use some reasonably high number.
+	BetterOrSimilarMsgThreshold = 50
 )
 
 // TODO: should seperate consensus mark and decided mark? This may take more memory but may remove the need for locks
@@ -39,10 +42,11 @@ type mark struct {
 	FirstMsgInRound *hashmap.Map[qbft.Round, time.Time]
 	MsgTypesInRound *hashmap.Map[qbft.Round, *hashmap.Map[qbft.MessageType, int]]
 
-	HighestDecided    qbft.Height
-	Last2DecidedTimes [2]time.Time
-	MarkedDecided     int
-	numOfSignatures   int
+	HighestDecided          qbft.Height
+	Last2DecidedTimes       [2]time.Time
+	MarkedDecided           int
+	numOfSignatures         int
+	betterOrSimilarMsgCount int
 }
 
 func markID(id []byte) string {
@@ -108,6 +112,7 @@ func (mark *mark) updateDecidedMark(height qbft.Height, msgSignatures int, plog 
 		mark.numOfSignatures = 0
 		mark.MarkedDecided = 0
 		mark.HighestRound = qbft.NoRound
+		mark.betterOrSimilarMsgCount = 0
 		mark.FirstMsgInRound = hashmap.New[qbft.Round, time.Time]()
 		// TODO: maybe we should clear the map instead of creating a new one..
 		// However, clearing a large map may take a lot of time. Also no memory will ever be freed.. which may open an attack vector.
@@ -365,27 +370,35 @@ func (schedule *MessageSchedule) minFirstMsgTimeForRound(signedMsg *qbft.SignedM
 	return minRoundTime
 }
 
-// checks if there is a better message for that instance
-func (schedule *MessageSchedule) hasBetterMsg(commit *qbft.SignedMessage) bool {
+// TODO maybe similar messages should pass
+// hasBetterOrSimilarMsg returns true if there is a decided message with the same height and the same or more signatures
+func (schedule *MessageSchedule) hasBetterOrSimilarMsg(commit *qbft.SignedMessage) (bool, pubsub.ValidationResult) {
 	idStr := markID(commit.Message.Identifier)
 
 	signerMap, found := schedule.Marks.Get(idStr)
 	if !found {
-		return false
+		return false, pubsub.ValidationAccept
 	}
 
-	betterMsg := false
+	validation := pubsub.ValidationAccept
+	betterOrSimilarMsg := false
 	signerMap.Range(func(key types.OperatorID, signerMark *mark) bool {
 		signerMark.rwLock.RLock()
 		defer signerMark.rwLock.RUnlock()
-		if signerMark.HighestDecided == commit.Message.Height && len(commit.Signers) < signerMark.numOfSignatures {
-			betterMsg = true
-			return false
+		if signerMark.HighestDecided == commit.Message.Height && len(commit.Signers) <= signerMark.numOfSignatures {
+			betterOrSimilarMsg = true
+			if signerMark.betterOrSimilarMsgCount > BetterOrSimilarMsgThreshold {
+				validation = pubsub.ValidationReject
+				return false
+			}
+			validation = pubsub.ValidationIgnore
+			// continue to check other signers, maybe they will be rejected
+			return true
 		}
 		return true
 	})
 
-	return betterMsg
+	return betterOrSimilarMsg, validation
 }
 
 func (signerMark *mark) tooManyMessagesPerRound(msg *qbft.SignedMessage, share *ssvtypes.SSVShare, plog *zap.Logger) bool {
