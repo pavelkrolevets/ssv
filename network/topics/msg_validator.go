@@ -224,11 +224,11 @@ func validateDecideMessage(ctx context.Context, signedCommit *qbft.SignedMessage
 	}
 
 	//sig validation
-	_, err := validateWithBatchVerifier(ctx, signedCommit, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
-	if err != nil {
-		reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on decided message")
-		return pubsub.ValidationReject
-	}
+	//_, err := validateWithBatchVerifier(ctx, signedCommit, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
+	//if err != nil {
+	//	reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on decided message")
+	//	return pubsub.ValidationReject
+	//}
 	//mark decided message
 	schedule.markDecidedMsg(signedCommit, share, plogger)
 	return pubsub.ValidationAccept
