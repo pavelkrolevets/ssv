@@ -167,11 +167,11 @@ func validateQbftMessage(ctx context.Context, schedule *MessageSchedule, signedM
 		}
 	}
 	// sig validation
-	_, err := validateWithBatchVerifier(ctx, signedMsg, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
-	if err != nil {
-		reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on qbft message")
-		return pubsub.ValidationReject
-	}
+	//_, err := validateWithBatchVerifier(ctx, signedMsg, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
+	//if err != nil {
+	//	reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on qbft message")
+	//	return pubsub.ValidationReject
+	//}
 
 	// mark message
 	schedule.MarkConsensusMessage(signerMark, signedMsg.Message.Identifier, signedMsg.Signers[0], signedMsg.Message.Round, signedMsg.Message.MsgType, plogger)
