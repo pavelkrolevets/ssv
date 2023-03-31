@@ -24,9 +24,9 @@ var sigChan = make(chan *signatureVerifier, verifierLimit)
 // NewSSVMsgValidator creates a new msg validator that validates message structure,
 // and checks that the message was sent on the right topic.
 // TODO - copying plogger may cause GC issues, consider using a pool
-func NewSSVMsgValidator(fork forks.Fork, valController validator.Controller, plogger zap.Logger) MsgValidatorFunc {
+func NewSSVMsgValidator(ctx context.Context, fork forks.Fork, valController validator.Controller, plogger zap.Logger) MsgValidatorFunc {
 	schedule := NewMessageSchedule()
-	//go verifierRoutine(ctx, sigChan)
+	go verifierRoutine(ctx, sigChan)
 	return func(ctx context.Context, p peer.ID, pmsg *pubsub.Message) pubsub.ValidationResult {
 		plog := plogger.With(zap.String("peerID", pmsg.GetFrom().String()))
 		plog.Debug("msg validation started")
