@@ -86,7 +86,7 @@ func createQbftSignatureVerifier(signedMessage *specqbft.SignedMessage, domain s
 
 // A routine that runs in the background to perform batch
 // verifications of incoming messages from gossip.
-func verifierRoutine(ctx context.Context, signatureChan chan *signatureVerifier) {
+func verifierRoutine(ctx context.Context, signatureChan chan *signatureVerifier, plogger zap.Logger) {
 	verifierBatch := make([]*signatureVerifier, 0)
 	ticker := time.NewTicker(signatureVerificationInterval)
 	for {
@@ -101,12 +101,12 @@ func verifierRoutine(ctx context.Context, signatureChan chan *signatureVerifier)
 		case sig := <-signatureChan:
 			verifierBatch = append(verifierBatch, sig)
 			if len(verifierBatch) >= verifierLimit {
-				verifyBatch(verifierBatch)
+				verifyBatch(verifierBatch, plogger)
 				verifierBatch = []*signatureVerifier{}
 			}
 		case <-ticker.C:
 			if len(verifierBatch) > 0 {
-				verifyBatch(verifierBatch)
+				verifyBatch(verifierBatch, plogger)
 				verifierBatch = []*signatureVerifier{}
 			}
 		}
@@ -141,7 +141,7 @@ func validateWithBatchVerifier(ctx context.Context, signedMessage *specqbft.Sign
 	return pubsub.ValidationAccept, nil
 }
 
-func verifyBatch(verifierBatch []*signatureVerifier) {
+func verifyBatch(verifierBatch []*signatureVerifier, plogger zap.Logger) {
 	if len(verifierBatch) == 0 {
 		return
 	}
@@ -158,4 +158,5 @@ func verifyBatch(verifierBatch []*signatureVerifier) {
 	for i := 0; i < len(verifierBatch); i++ {
 		verifierBatch[i].resChan <- verified
 	}
+	plogger.Debug("batch verification", zap.Int("batch_size", len(verifierBatch)), zap.Bool("verified", verified))
 }
