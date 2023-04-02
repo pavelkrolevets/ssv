@@ -37,6 +37,9 @@ const (
 type mark struct {
 	rwLock sync.RWMutex
 
+	//TODO after having production ready code add peermap solution
+	//	peerMap *hashmap.Map[string]*mark
+
 	//should be reset when a decided message is received with a larger height
 	HighestRound    qbft.Round
 	FirstMsgInRound *hashmap.Map[qbft.Round, time.Time]

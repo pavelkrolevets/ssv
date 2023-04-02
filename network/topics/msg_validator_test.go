@@ -47,7 +47,7 @@ func TestMsgValidator(t *testing.T) {
 		pmsg := newPBMsg(raw, f.GetTopicFullName(topics[0]), []byte(peerID))
 		res := mv(context.Background(), "peerID", pmsg)
 		// TODO: make it accept or delete test
-		require.Equal(t, res, pubsub.ValidationReject)
+		require.Equal(t, res, pubsub.ValidationAccept)
 	})
 
 	// TODO: enable once topic validation is in place

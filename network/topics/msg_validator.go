@@ -166,12 +166,12 @@ func validateQbftMessage(ctx context.Context, schedule *MessageSchedule, signedM
 			return pubsub.ValidationReject
 		}
 	}
-	// sig validation
-	//_, err := validateWithBatchVerifier(ctx, signedMsg, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
-	//if err != nil {
-	//	reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on qbft message")
-	//	return pubsub.ValidationReject
-	//}
+	//sig validation
+	_, err := validateWithBatchVerifier(ctx, signedMsg, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
+	if err != nil {
+		reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on qbft message")
+		return pubsub.ValidationReject
+	}
 
 	// mark message
 	schedule.MarkConsensusMessage(signerMark, signedMsg.Message.Identifier, signedMsg.Signers[0], signedMsg.Message.Round, signedMsg.Message.MsgType, plogger)
@@ -224,11 +224,11 @@ func validateDecideMessage(ctx context.Context, signedCommit *qbft.SignedMessage
 	}
 
 	//sig validation
-	//_, err := validateWithBatchVerifier(ctx, signedCommit, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
-	//if err != nil {
-	//	reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on decided message")
-	//	return pubsub.ValidationReject
-	//}
+	_, err := validateWithBatchVerifier(ctx, signedCommit, share.DomainType, spectypes.QBFTSignatureType, share.Committee, sigChan, plogger)
+	if err != nil {
+		reportValidationResult(ValidationResultInvalidSig, plogger, err, "invalid signature on decided message")
+		return pubsub.ValidationReject
+	}
 	//mark decided message
 	schedule.markDecidedMsg(signedCommit, share, plogger)
 	return pubsub.ValidationAccept
