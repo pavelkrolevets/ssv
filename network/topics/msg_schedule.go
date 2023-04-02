@@ -23,7 +23,6 @@ const (
 	DecidedBeatDuration = time.Second * 2
 	// If we see decided messages for the same instance enough times we may start invalidating
 	// TODO express this as a function of faulty nodes in the cluster
-	DecidedCountThreshold    = 4
 	ProposeCountThreshold    = 1
 	QbftSimilarMessagesSlack = 0
 	RoundSlack               = 0
@@ -331,9 +330,11 @@ func (schedule *MessageSchedule) isTimelyDecidedMessage(id []byte, signers []typ
 			// maybe for other signers it is timely
 			continue
 		}
-
-		// TODO maybe count threshold can be a bit larger?
-		if signerMark.MarkedDecided > DecidedCountThreshold {
+		if signerMark.HighestDecided == height {
+			// This passed the hasBetterOrSimilarCheck so it is always timely
+			//TODO maybe move betterOrSimilarMsgCount logic here?
+			return true
+		} else {
 			fromLast2Decided := signerMark.DurationFromLast2Decided()
 			plog.Warn("duration from last 2 decided",
 				zap.Duration("duration", fromLast2Decided), zap.Any("markedHeight", signerMark.HighestDecided), zap.Any("signer", signer))
@@ -341,8 +342,6 @@ func (schedule *MessageSchedule) isTimelyDecidedMessage(id []byte, signers []typ
 			if fromLast2Decided >= DecidedBeatDuration {
 				return true
 			}
-		} else {
-			return true
 		}
 	}
 	return false
@@ -394,8 +393,10 @@ func (schedule *MessageSchedule) hasBetterOrSimilarMsg(commit *qbft.SignedMessag
 				validation = pubsub.ValidationReject
 				return false
 			}
-			validation = pubsub.ValidationIgnore
 			// continue to check other signers, maybe they will be rejected
+			// TODO maybe we don't need this constant per signer?
+			signerMark.betterOrSimilarMsgCount++
+			validation = pubsub.ValidationIgnore
 			return true
 		}
 		return true
