@@ -44,10 +44,11 @@ type mark struct {
 	FirstMsgInRound *hashmap.Map[qbft.Round, time.Time]
 	MsgTypesInRound *hashmap.Map[qbft.Round, *hashmap.Map[qbft.MessageType, int]]
 
-	HighestDecided          qbft.Height
-	Last2DecidedTimes       [2]time.Time
-	MarkedDecided           int
-	numOfSignatures         int
+	HighestDecided    qbft.Height
+	Last2DecidedTimes [2]time.Time
+	MarkedDecided     int
+	// the seen signers of the last decided message
+	signers                 map[types.OperatorID]struct{}
 	betterOrSimilarMsgCount int
 }
 
@@ -96,7 +97,7 @@ func (mark *mark) ResetForNewRound(round qbft.Round, msgType qbft.MessageType) {
 	typesToOccurrences.Insert(msgType, 1)
 }
 
-func (mark *mark) updateDecidedMark(height qbft.Height, msgSignatures int, plog *zap.Logger) {
+func (mark *mark) updateDecidedMark(height qbft.Height, msgSignatures []types.OperatorID, plog *zap.Logger) {
 	mark.rwLock.Lock()
 	defer mark.rwLock.Unlock()
 
@@ -111,7 +112,8 @@ func (mark *mark) updateDecidedMark(height qbft.Height, msgSignatures int, plog 
 	if mark.HighestDecided < height || height == qbft.FirstHeight && mark.MarkedDecided == 0 {
 		// reset for new height
 		mark.HighestDecided = height
-		mark.numOfSignatures = 0
+		// maybe clear map instead of creating a new one
+		mark.signers = make(map[types.OperatorID]struct{})
 		mark.MarkedDecided = 0
 		mark.HighestRound = qbft.NoRound
 		mark.betterOrSimilarMsgCount = 0
@@ -126,9 +128,9 @@ func (mark *mark) updateDecidedMark(height qbft.Height, msgSignatures int, plog 
 	// only update for highest decided
 	if mark.HighestDecided == height {
 		mark.addDecidedMark()
-		//must be a better decided message, but we check anyhow
-		if mark.numOfSignatures < msgSignatures {
-			mark.numOfSignatures = msgSignatures
+		for _, signer := range msgSignatures {
+			// no need to insert if exists
+			mark.signers[signer] = struct{}{}
 		}
 	}
 }
@@ -279,10 +281,10 @@ func (schedule *MessageSchedule) markDecidedMsg(signedMsg *qbft.SignedMessage, s
 	}
 	height := signedMsg.Message.Height
 
-	schedule.markDecidedMessage(id, signers, height, len(signedMsg.Signers), plog)
+	schedule.markDecidedMessage(id, signers, height, signedMsg.Signers, plog)
 }
 
-func (schedule *MessageSchedule) markDecidedMessage(id []byte, committeeMembers []types.OperatorID, height qbft.Height, numOfSignatures int, plog *zap.Logger) {
+func (schedule *MessageSchedule) markDecidedMessage(id []byte, committeeMembers []types.OperatorID, height qbft.Height, signatures []types.OperatorID, plog *zap.Logger) {
 	for _, signer := range committeeMembers {
 		idStr := markID(id)
 		lockID := markLockID(id, signer)
@@ -295,7 +297,7 @@ func (schedule *MessageSchedule) markDecidedMessage(id []byte, committeeMembers 
 			schedule.setMark(idStr, signer, signerMark)
 		}
 
-		signerMark.updateDecidedMark(height, numOfSignatures, plog)
+		signerMark.updateDecidedMark(height, signatures, plog)
 		plog.Info("decided mark updated", zap.Any("mark signer", signer), zap.Any("decided mark", signerMark))
 	}
 }
@@ -388,7 +390,8 @@ func (schedule *MessageSchedule) hasBetterOrSimilarMsg(commit *qbft.SignedMessag
 	signerMap.Range(func(key types.OperatorID, signerMark *mark) bool {
 		signerMark.rwLock.RLock()
 		defer signerMark.rwLock.RUnlock()
-		if signerMark.HighestDecided == commit.Message.Height && len(commit.Signers) <= signerMark.numOfSignatures {
+		// Even if signers are different, we assume that due to propagating commits we will see the better decided messages later
+		if signerMark.HighestDecided == commit.Message.Height && len(commit.Signers) <= len(signerMark.signers) {
 			betterOrSimilarMsg = true
 			if signerMark.betterOrSimilarMsgCount >= BetterOrSimilarMsgThreshold {
 				validation = pubsub.ValidationReject
