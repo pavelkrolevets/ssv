@@ -220,6 +220,7 @@ func (signerMark *mark) isConsensusMessageTimely(height qbft.Height, round qbft.
 		return false, pubsub.ValidationReject
 	} else if signerMark.HighestDecided == height {
 		// TODO: ugly hack for height == 0 case
+		// Problematic if another commit comes to make a better decided
 		if height != 0 || signerMark.MarkedDecided > 0 {
 			plog.Warn("a qbft message arrived for the same height was already decided", zap.Any("height", height))
 			// assume a late message and don't penalize
@@ -389,7 +390,7 @@ func (schedule *MessageSchedule) hasBetterOrSimilarMsg(commit *qbft.SignedMessag
 		defer signerMark.rwLock.RUnlock()
 		if signerMark.HighestDecided == commit.Message.Height && len(commit.Signers) <= signerMark.numOfSignatures {
 			betterOrSimilarMsg = true
-			if signerMark.betterOrSimilarMsgCount > BetterOrSimilarMsgThreshold {
+			if signerMark.betterOrSimilarMsgCount >= BetterOrSimilarMsgThreshold {
 				validation = pubsub.ValidationReject
 				return false
 			}
@@ -432,6 +433,7 @@ func (signerMark *mark) tooManyMsgsPerRound(round qbft.Round, msgType qbft.Messa
 	}
 
 	switch msgType {
+	//should always be 1
 	case qbft.ProposalMsgType:
 		// TODO this case occured in staging even though it shouldn't
 		return occurrence >= ProposeCountThreshold+QbftSimilarMessagesSlack
