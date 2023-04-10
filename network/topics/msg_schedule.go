@@ -439,18 +439,7 @@ func (signerMark *mark) tooManyMsgsPerRound(round qbft.Round, msgType qbft.Messa
 		// must not initialize inner map here because memory allocation should happen only after signature validation
 		return false
 	}
-	occurrence, exists := msgTypeToOccurrences.Get(msgType)
+	_, exists := msgTypeToOccurrences.Get(msgType)
 
-	if !exists {
-		return false
-	}
-
-	switch msgType {
-	//should always be 1
-	case qbft.ProposalMsgType:
-		// TODO this case occured in staging even though it shouldn't
-		return occurrence >= ProposeCountThreshold+QbftSimilarMessagesSlack
-	default:
-		return occurrence >= len(share.Committee)+QbftSimilarMessagesSlack
-	}
+	return exists
 }
