@@ -161,6 +161,7 @@ func validateQbftMessage(ctx context.Context, schedule *MessageSchedule, signedM
 			reportValidationResult(ValidationResultNotTimely, plogger, nil, "non timely qbft message")
 			return valResult
 		}
+		// TODO: fix case where a past height message is received
 		if signerMark.tooManyMessagesPerRound(signedMsg, share, plogger) {
 			reportValidationResult(ValidationResultTooManyMsgs, plogger, nil, "too many messages per round")
 			return pubsub.ValidationReject
