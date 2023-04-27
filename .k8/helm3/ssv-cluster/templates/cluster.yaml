@@ -1,0 +1,8 @@
+{{- range .Values.clusters }}
+    {{- $clustername := .cluster_name -}}
+    {{- range .nodes }}
+       {{ template "node-dep" $clustername }}
+#       cluster: {{ $clustername }}
+#       key: {{ .node_name }}
+    {{- end }}
+{{- end }}

@@ -1,0 +1,41 @@
+clusters:
+    - cluster_name: "a"
+      nodes:
+        - node_name: "1"
+        # expand value file
+        - node_name: "2"
+        # expand value file
+        - node_name: "3"
+        # expand value file
+        - node_name: "4"
+        # expand value file
+    - cluster_name: "a"
+      nodes:
+        - node_name: "1"
+        # expand value file
+        - node_name: "2"
+        # expand value file
+        - node_name: "3"
+        # expand value file
+        - node_name: "4"
+        # expand value file
+    - cluster_name: "c"
+      nodes:
+        - node_name: "1"
+        # expand value file
+        - node_name: "2"
+        # expand value file
+        - node_name: "3"
+        # expand value file
+        - node_name: "4"
+        # expand value file
+    - cluster_name: "d"
+      nodes:
+        - node_name: "1"
+        # expand value file
+        - node_name: "2"
+        # expand value file
+        - node_name: "3"
+        # expand value file
+        - node_name: "4"
+        # expand value file
