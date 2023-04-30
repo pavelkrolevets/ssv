@@ -310,17 +310,36 @@ func (c *controller) handleRouterMessages(logger *zap.Logger) {
 					for _, signer := range signers {
 						participation.Set(signer, time.Now())
 					}
-					var last10MinSigners []spectypes.OperatorID
+					var last15MinSigners []spectypes.OperatorID
 					participation.Range(func(id spectypes.OperatorID, t time.Time) bool {
-						if time.Since(t) < 10*time.Minute {
-							last10MinSigners = append(last10MinSigners, id)
+						if time.Since(t) < 15*time.Minute {
+							last15MinSigners = append(last15MinSigners, id)
 						}
 						return true
 					})
+					msgType := "unknown"
+					switch m := decoded.Body.(type) {
+					case *spectypes.SignedPartialSignatureMessage:
+						msgType = "partial"
+					case *specqbft.SignedMessage:
+						msgType = "unknown-consensus"
+						switch m.Message.MsgType {
+						case specqbft.CommitMsgType:
+							msgType = "commit"
+						case specqbft.PrepareMsgType:
+							msgType = "prepare"
+						case specqbft.ProposalMsgType:
+							msgType = "proposal"
+						case specqbft.RoundChangeMsgType:
+							msgType = "round_change"
+						}
+					}
 					logger.Debug("[committee-participation-stats] Got message",
 						zap.String("pk", hexPK),
+						zap.String("msg_role", decoded.MsgID.GetRoleType().String()),
+						zap.String("msg_type", msgType),
 						zap.Any("msg_signers", signers),
-						zap.Any("last_10_min_signers", last10MinSigners),
+						zap.Any("last_15_min_signers", last15MinSigners),
 					)
 				}
 
