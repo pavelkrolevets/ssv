@@ -9,6 +9,7 @@ import (
 
 	"github.com/bloxapp/ssv/logging"
 	"github.com/bloxapp/ssv/logging/fields"
+	"github.com/cornelk/hashmap"
 
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	specqbft "github.com/bloxapp/ssv-spec/qbft"
@@ -34,6 +35,7 @@ import (
 	"github.com/bloxapp/ssv/protocol/v2/qbft/roundtimer"
 	utilsprotocol "github.com/bloxapp/ssv/protocol/v2/queue"
 	"github.com/bloxapp/ssv/protocol/v2/queue/worker"
+	"github.com/bloxapp/ssv/protocol/v2/ssv/queue"
 	"github.com/bloxapp/ssv/protocol/v2/ssv/runner"
 	"github.com/bloxapp/ssv/protocol/v2/ssv/validator"
 	"github.com/bloxapp/ssv/protocol/v2/sync/handlers"
@@ -265,6 +267,8 @@ func (c *controller) GetValidatorStats(logger *zap.Logger) (uint64, uint64, uint
 	return uint64(len(allShares)), active, operatorShares, nil
 }
 
+var committeeParticipations = hashmap.New[string, *hashmap.Map[spectypes.OperatorID, time.Time]]()
+
 func (c *controller) handleRouterMessages(logger *zap.Logger) {
 	ctx, cancel := context.WithCancel(c.context)
 	defer cancel()
@@ -286,6 +290,36 @@ func (c *controller) handleRouterMessages(logger *zap.Logger) {
 			if v, ok := c.validatorsMap.GetValidator(hexPK); ok {
 				v.HandleMessage(logger, &msg)
 			} else {
+				decoded, err := queue.DecodeSSVMessage(logger, &msg)
+				if err != nil {
+					logger.Warn("Failed to decode message", zap.Error(err))
+					continue
+				}
+				var signers []spectypes.OperatorID
+				if partial, ok := decoded.Body.(*spectypes.SignedPartialSignatureMessage); ok {
+					signers = partial.GetSigners()
+				} else if commit, ok := decoded.Body.(*specqbft.SignedMessage); ok {
+					signers = commit.GetSigners()
+				}
+				if len(signers) > 0 {
+					participation, _ := committeeParticipations.GetOrInsert(string(pk), hashmap.New[spectypes.OperatorID, time.Time]())
+					for _, signer := range signers {
+						participation.Set(signer, time.Now())
+					}
+					var last10MinSigners []spectypes.OperatorID
+					participation.Range(func(id spectypes.OperatorID, t time.Time) bool {
+						if time.Since(t) < 10*time.Minute {
+							last10MinSigners = append(last10MinSigners, id)
+						}
+						return true
+					})
+					logger.Debug("[committee-participation-stats] Got message",
+						zap.String("pk", hexPK),
+						zap.Any("msg_signers", signers),
+						zap.Any("last_10_min_signers", last10MinSigners),
+					)
+				}
+
 				if msg.MsgType != spectypes.SSVConsensusMsgType {
 					continue // not supporting other types
 				}
