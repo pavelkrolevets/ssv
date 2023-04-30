@@ -302,7 +302,11 @@ func (c *controller) handleRouterMessages(logger *zap.Logger) {
 					signers = commit.GetSigners()
 				}
 				if len(signers) > 0 {
-					participation, _ := committeeParticipations.GetOrInsert(string(pk), hashmap.New[spectypes.OperatorID, time.Time]())
+					participation, exist := committeeParticipations.Get(string(pk))
+					if !exist {
+						participation = hashmap.New[spectypes.OperatorID, time.Time]()
+						committeeParticipations.Set(string(pk), participation)
+					}
 					for _, signer := range signers {
 						participation.Set(signer, time.Now())
 					}
