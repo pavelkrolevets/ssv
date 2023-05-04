@@ -129,8 +129,21 @@ func (n *p2pNetwork) reportPeerIdentity(logger *zap.Logger, pid peer.ID) {
 	}
 
 	nodeState := n.idx.State(pid)
+
+	addrsStr := ""
+	addrs := n.host.Peerstore().Addrs(pid)
+	if len(addrs) > 0 {
+		for i, addr := range addrs {
+			if i > 0 {
+				addrsStr += ","
+			}
+			addrsStr += addr.String()
+		}
+	}
+
 	logger.Debug("peer identity",
 		fields.PeerID(pid),
+		zap.String("addrs", addrsStr),
 		zap.String("forkv", forkv),
 		zap.String("nodeVersion", nodeVersion),
 		zap.String("opPKHash", opPKHash),
