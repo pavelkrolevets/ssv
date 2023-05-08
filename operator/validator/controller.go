@@ -319,12 +319,14 @@ func (c *controller) handleRouterMessages(logger *zap.Logger) {
 					})
 					msgType := "unknown"
 					var round specqbft.Round
+					var height specqbft.Height
 					switch m := decoded.Body.(type) {
 					case *spectypes.SignedPartialSignatureMessage:
 						msgType = "partial"
 					case *specqbft.SignedMessage:
 						msgType = "unknown-consensus"
 						round = m.Message.Round
+						height = m.Message.Height
 						switch m.Message.MsgType {
 						case specqbft.CommitMsgType:
 							msgType = "commit"
@@ -341,6 +343,7 @@ func (c *controller) handleRouterMessages(logger *zap.Logger) {
 						zap.String("msg_role", decoded.MsgID.GetRoleType().String()),
 						zap.String("msg_type", msgType),
 						zap.Int("msg_round", int(round)),
+						zap.Int("msg_height", int(height)),
 						zap.Any("msg_signers", signers),
 						zap.Any("last_15_min_signers", last15MinSigners),
 					)
