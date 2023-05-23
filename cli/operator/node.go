@@ -101,6 +101,7 @@ var StartNodeCmd = &cobra.Command{
 		cfg.P2pNetworkConfig.Ctx = cmd.Context()
 		currentSlot := uint64(eth2Network.EstimatedCurrentSlot())
 		if currentSlot >= cfg.P2pNetworkConfig.PermissionedActivateSlot && currentSlot < cfg.P2pNetworkConfig.PermissionedDeactivateSlot {
+			logger.Info("Permissioned: Accepting only operators in SSV contract")
 			cfg.P2pNetworkConfig.Permissioned = true
 			cfg.P2pNetworkConfig.WhitelistedOperatorKeys = append(cfg.P2pNetworkConfig.WhitelistedOperatorKeys, p2pv1.StageExporterPubkeys...) // TODO: get whitelisted from network config
 		}
