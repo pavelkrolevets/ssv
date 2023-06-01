@@ -3,6 +3,7 @@ package types
 import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/herumi/bls-eth-go-binary/bls"
+	"go.uber.org/zap"
 )
 
 var blsPublicKeyCache *lru.Cache[string, bls.PublicKey]
@@ -23,6 +24,7 @@ func DeserializeBLSPublicKey(b []byte) (bls.PublicKey, error) {
 		return pk, nil
 	}
 
+	zap.L().Debug("deserializing bls public key", zap.String("key", pkStr))
 	pk := bls.PublicKey{}
 	if err := pk.Deserialize(b); err != nil {
 		return bls.PublicKey{}, err

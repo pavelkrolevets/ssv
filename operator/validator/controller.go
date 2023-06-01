@@ -364,7 +364,11 @@ func (c *controller) handleWorkerMessages(logger *zap.Logger, msg *spectypes.SSV
 				NonCommitteeValidator: validator.NewNonCommitteeValidator(logger, msg.GetID(), opts),
 			}
 
-			ttlSlots := nonCommitteeValidatorTTLs[msg.MsgID.GetRoleType()]
+			ttlSlots, ok := nonCommitteeValidatorTTLs[msg.MsgID.GetRoleType()]
+			if !ok {
+				ttlSlots = 4
+				logger.Error("unknown role type", zap.String("role", msg.MsgID.GetRoleType().String()))
+			}
 			c.nonCommitteeValidators.Set(
 				msg.GetID(),
 				ncv,
