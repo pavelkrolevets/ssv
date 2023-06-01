@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	spectypes "github.com/bloxapp/ssv-spec/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -448,12 +449,12 @@ func verifySignature(sig []byte, owner common.Address, pubKey []byte, nonce regi
 		return errors.Wrap(err, "failed to deserialize signature")
 	}
 
-	pk := &bls.PublicKey{}
-	if err := pk.Deserialize(pubKey); err != nil {
+	pk, err := types.DeserializeBLSPublicKey(pubKey)
+	if err != nil {
 		return errors.Wrap(err, "failed to deserialize public key")
 	}
 
-	if res := sign.VerifyByte(pk, hash); !res {
+	if res := sign.VerifyByte(&pk, hash); !res {
 		return errors.New("failed to verify signature")
 	}
 
