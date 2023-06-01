@@ -42,10 +42,6 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 5679
-      protocol: TCP
-      targetPort: 5679
-      name: port-5679
     - port: 4000
       protocol: UDP
       targetPort: 4000
