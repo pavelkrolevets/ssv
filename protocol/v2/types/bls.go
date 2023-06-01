@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/bloxapp/ssv/logging/fields"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/herumi/bls-eth-go-binary/bls"
 	"go.uber.org/zap"
@@ -24,7 +25,7 @@ func DeserializeBLSPublicKey(b []byte) (bls.PublicKey, error) {
 		return pk, nil
 	}
 
-	zap.L().Debug("deserializing bls public key", zap.String("key", pkStr))
+	zap.L().Debug("deserializing bls public key", fields.PubKey(b))
 	pk := bls.PublicKey{}
 	if err := pk.Deserialize(b); err != nil {
 		return bls.PublicKey{}, err

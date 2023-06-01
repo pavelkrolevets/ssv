@@ -374,6 +374,9 @@ func (c *controller) handleWorkerMessages(logger *zap.Logger, msg *spectypes.SSV
 				ncv,
 				time.Duration(ttlSlots)*c.beacon.GetBeaconNetwork().SlotDurationSec(),
 			)
+			logger.Debug("created non committee validator",
+				zap.String("id", msg.GetID().String()), zap.String("role", msg.MsgID.GetRoleType().String()),
+				zap.Duration("ttl", time.Duration(ttlSlots)*c.beacon.GetBeaconNetwork().SlotDurationSec()))
 		}
 
 		ncv.Lock()
