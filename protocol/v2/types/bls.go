@@ -25,7 +25,7 @@ func DeserializeBLSPublicKey(b []byte) (bls.PublicKey, error) {
 		return pk, nil
 	}
 
-	zap.L().Debug("deserializing bls public key", fields.PubKey(b))
+	zap.L().Debug("deserializing bls public key", fields.PubKey(b), zap.Int("cache_size", blsPublicKeyCache.Len()))
 	pk := bls.PublicKey{}
 	if err := pk.Deserialize(b); err != nil {
 		return bls.PublicKey{}, err
