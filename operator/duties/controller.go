@@ -270,7 +270,7 @@ func (dc *dutyController) handleValidatorRegistration(logger *zap.Logger, slot p
 			registrationSlotInterval *= validatorRegistrationEpochInterval
 		}
 
-		if uint64(share.BeaconMetadata.Index)%registrationSlotInterval != uint64(slot)%registrationSlotInterval {
+		if !ShouldRegisterValidatorAtSlot(phase0.Slot(registrationSlotInterval), share.BeaconMetadata.Index, slot) {
 			continue
 		}
 
@@ -288,6 +288,10 @@ func (dc *dutyController) handleValidatorRegistration(logger *zap.Logger, slot p
 		dc.validatorsPassedFirstRegistration[string(share.ValidatorPubKey)] = struct{}{}
 	}
 	logger.Debug("validator registration duties sent", zap.Uint64("slot", uint64(slot)), fields.Count(sent))
+}
+
+func ShouldRegisterValidatorAtSlot(interval phase0.Slot, index phase0.ValidatorIndex, slot phase0.Slot) bool {
+	return (uint64(index)+uint64(slot))%uint64(interval) == 0
 }
 
 // handleSyncCommittee preform the following processes -

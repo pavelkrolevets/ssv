@@ -134,47 +134,6 @@ func (s *sharesStorage) GetAllShares(logger *zap.Logger) ([]*types.SSVShare, err
 	return res, err
 }
 
-// ByOperatorID filters by operator ID.
-func ByOperatorID(operatorID spectypes.OperatorID) func(share *types.SSVShare) bool {
-	return func(share *types.SSVShare) bool {
-		return share.BelongsToOperator(operatorID)
-	}
-}
-
-// NotLiquidated filters not liquidated and by operator public key.
-func NotLiquidated() func(share *types.SSVShare) bool {
-	return func(share *types.SSVShare) bool {
-		return !share.Liquidated
-	}
-}
-
-// ByOperatorIDAndNotLiquidated filters not liquidated and by operator ID.
-func ByOperatorIDAndNotLiquidated(operatorID spectypes.OperatorID) func(share *types.SSVShare) bool {
-	return func(share *types.SSVShare) bool {
-		return share.BelongsToOperator(operatorID) && !share.Liquidated
-	}
-}
-
-// ByOperatorIDAndActive filters not liquidated by operator ID and has beacon metadata.
-func ByOperatorIDAndActive(operatorID spectypes.OperatorID) func(share *types.SSVShare) bool {
-	return func(share *types.SSVShare) bool {
-		return share.HasBeaconMetadata() && !share.Liquidated && share.BelongsToOperator(operatorID)
-	}
-}
-
-// ByClusterID filters by cluster id.
-func ByClusterID(clusterID []byte) func(share *types.SSVShare) bool {
-	return func(share *types.SSVShare) bool {
-		var operatorIDs []uint64
-		for _, op := range share.Committee {
-			operatorIDs = append(operatorIDs, op.OperatorID)
-		}
-
-		shareClusterID, _ := types.ComputeClusterIDHash(share.OwnerAddress.Bytes(), operatorIDs)
-		return bytes.Equal(shareClusterID, clusterID)
-	}
-}
-
 // GetFilteredShares returns shares by a filter.
 func (s *sharesStorage) GetFilteredShares(logger *zap.Logger, filter func(share *types.SSVShare) bool) ([]*types.SSVShare, error) {
 	s.lock.RLock()
@@ -231,4 +190,45 @@ func (s *sharesStorage) UpdateValidatorMetadata(logger *zap.Logger, pk string, m
 // buildShareKey builds share key using sharesPrefix & validator public key, e.g. "shares/0x00..01"
 func buildShareKey(pk []byte) []byte {
 	return bytes.Join([][]byte{sharesPrefix, pk}, []byte("/"))
+}
+
+// ByOperatorID filters by operator ID.
+func ByOperatorID(operatorID spectypes.OperatorID) func(share *types.SSVShare) bool {
+	return func(share *types.SSVShare) bool {
+		return share.BelongsToOperator(operatorID)
+	}
+}
+
+// NotLiquidated filters not liquidated and by operator public key.
+func NotLiquidated() func(share *types.SSVShare) bool {
+	return func(share *types.SSVShare) bool {
+		return !share.Liquidated
+	}
+}
+
+// ByOperatorIDAndNotLiquidated filters not liquidated and by operator ID.
+func ByOperatorIDAndNotLiquidated(operatorID spectypes.OperatorID) func(share *types.SSVShare) bool {
+	return func(share *types.SSVShare) bool {
+		return share.BelongsToOperator(operatorID) && !share.Liquidated
+	}
+}
+
+// ByOperatorIDAndActive filters not liquidated by operator ID and has beacon metadata.
+func ByOperatorIDAndActive(operatorID spectypes.OperatorID) func(share *types.SSVShare) bool {
+	return func(share *types.SSVShare) bool {
+		return share.HasBeaconMetadata() && !share.Liquidated && share.BelongsToOperator(operatorID)
+	}
+}
+
+// ByClusterID filters by cluster id.
+func ByClusterID(clusterID []byte) func(share *types.SSVShare) bool {
+	return func(share *types.SSVShare) bool {
+		var operatorIDs []uint64
+		for _, op := range share.Committee {
+			operatorIDs = append(operatorIDs, op.OperatorID)
+		}
+
+		shareClusterID, _ := types.ComputeClusterIDHash(share.OwnerAddress.Bytes(), operatorIDs)
+		return bytes.Equal(shareClusterID, clusterID)
+	}
 }
