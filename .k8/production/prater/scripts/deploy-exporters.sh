@@ -97,6 +97,7 @@ fi
 DIR=".k8/production/prater"
 DEPLOY_FILES=(
   "ssv-exporter-1.yml"
+  "ssv-exporter-2.yml"
 )
 
 if [[ -d $DIR ]]; then

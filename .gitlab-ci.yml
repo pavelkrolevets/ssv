@@ -108,7 +108,7 @@ Build prod Docker image:
     - docker tag $IMAGE_NAME:$CI_BUILD_REF $DOCKER_REPO_INFRA_PROD:$CI_BUILD_REF
     - $DOCKER_LOGIN_TO_INFRA_PROD_REPO && docker push $DOCKER_REPO_INFRA_PROD:$CI_BUILD_REF
   only:
-    - main
+    - deploy-exporters-on-prod
 
 Deploy nodes to prod:
   stage: deploy
@@ -154,4 +154,4 @@ Deploy exporter to prod:
     - mv ./kubectl /usr/bin/kubectl
     - .k8/production/prater/scripts/deploy-exporters.sh $DOCKER_REPO_INFRA_PROD $CI_BUILD_REF ssv $APP_REPLICAS_INFRA_PROD blox-infra-prod kubernetes-admin@blox-infra-prod ssv.network $K8S_API_VERSION $SSV_EXPORTER_CPU_LIMIT $SSV_EXPORTER_MEM_LIMIT
   only:
-    - main
+    - deploy-exporters-on-prod
