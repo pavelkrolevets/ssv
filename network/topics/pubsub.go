@@ -9,7 +9,6 @@ import (
 	"github.com/bloxapp/ssv/network/forks"
 	"github.com/bloxapp/ssv/network/peers"
 	"github.com/bloxapp/ssv/network/topics/params"
-	"github.com/bloxapp/ssv/utils/async"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -129,14 +128,14 @@ func NewPubsub(ctx context.Context, logger *zap.Logger, cfg *PububConfig, fork f
 	var topicScoreFactory func(string) *pubsub.TopicScoreParams
 	if cfg.ScoreIndex != nil {
 		cfg.initScoring()
-		inspector := scoreInspector(logger, cfg.ScoreIndex)
-		peerScoreParams := params.PeerScoreParams(cfg.Scoring.OneEpochDuration, cfg.MsgIDCacheTTL, cfg.Scoring.IPColocationWeight, 0, cfg.Scoring.IPWhilelist...)
-		psOpts = append(psOpts, pubsub.WithPeerScore(peerScoreParams, params.PeerScoreThresholds()),
-			pubsub.WithPeerScoreInspect(inspector, scoreInspectInterval))
-		async.Interval(ctx, time.Hour, func() {
-			// reset peer scores metric every hour because it has a label for peer ID which can grow infinitely
-			metricPubsubPeerScoreInspect.Reset()
-		})
+		// inspector := scoreInspector(logger, cfg.ScoreIndex)
+		// peerScoreParams := params.PeerScoreParams(cfg.Scoring.OneEpochDuration, cfg.MsgIDCacheTTL, cfg.Scoring.IPColocationWeight, 0, cfg.Scoring.IPWhilelist...)
+		// psOpts = append(psOpts, pubsub.WithPeerScore(peerScoreParams, params.PeerScoreThresholds()),
+		// 	pubsub.WithPeerScoreInspect(inspector, scoreInspectInterval))
+		// async.Interval(ctx, time.Hour, func() {
+		// 	// reset peer scores metric every hour because it has a label for peer ID which can grow infinitely
+		// 	metricPubsubPeerScoreInspect.Reset()
+		// })
 		if cfg.GetValidatorStats == nil {
 			cfg.GetValidatorStats = func() (uint64, uint64, uint64, error) {
 				// default in case it was not injected
