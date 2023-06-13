@@ -122,6 +122,26 @@ func NewPubsub(ctx context.Context, logger *zap.Logger, cfg *PububConfig, fork f
 		// }),
 	}
 
+	// params := pubsub.DefaultGossipSubParams()
+	// params.Dlo = gsDlo
+	// params.Dhi = gsDhi
+	// params.D = gsD
+	// params.HeartbeatInterval = HeartbeatInterval
+	// params.HistoryLength = gsMcacheLen
+	// params.HistoryGossip = gsMcacheGossip
+	// params.MaxIHaveLength = gsMaxIHaveLength
+	// params.MaxIHaveMessages = gsMaxIHaveMessages
+	logger.Debug("rvrt: gossip sub params",
+		zap.Int("Dlo", params.GossipSubParams().Dlo),
+		zap.Int("Dhi", params.GossipSubParams().Dhi),
+		zap.Int("D", params.GossipSubParams().D),
+		zap.Duration("HeartbeatInterval", params.GossipSubParams().HeartbeatInterval),
+		zap.Int("HistoryLength", params.GossipSubParams().HistoryLength),
+		zap.Int("HistoryGossip", params.GossipSubParams().HistoryGossip),
+		zap.Int("MaxIHaveLength", params.GossipSubParams().MaxIHaveLength),
+		zap.Int("MaxIHaveMessages", params.GossipSubParams().MaxIHaveMessages),
+	)
+
 	if cfg.Discovery != nil {
 		psOpts = append(psOpts, pubsub.WithDiscovery(cfg.Discovery))
 	}
