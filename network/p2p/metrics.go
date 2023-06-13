@@ -30,7 +30,7 @@ var (
 	MetricsPeersIdentity = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "ssv:network:peers_identity",
 		Help: "Peers identity",
-	}, []string{"pubKey", "operatorID", "v", "pid", "type", "subnetCount"})
+	}, []string{"pubKey", "operatorID", "v", "pid", "type"})
 	metricsRouterIncoming = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ssv:network:router:in",
 		Help: "Counts incoming messages",
