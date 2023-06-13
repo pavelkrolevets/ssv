@@ -82,8 +82,8 @@ func (ch *connHandler) Handle(logger *zap.Logger) *libp2pnetwork.NotifyBundle {
 			disconnect(net, conn)
 			return errors.New("peer doesn't share enough subnets")
 		}
-		//logger.Debug("new connection is ready",
-		//	zap.String("dir", conn.Stat().Direction.String()))
+		logger.Debug("new connection is ready",
+			zap.String("dir", conn.Stat().Direction.String()))
 		metricsConnections.Inc()
 		return nil
 	}
