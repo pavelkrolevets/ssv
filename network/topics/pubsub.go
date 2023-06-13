@@ -131,7 +131,21 @@ func NewPubsub(ctx context.Context, logger *zap.Logger, cfg *PububConfig, fork f
 		cfg.initScoring()
 		inspector := scoreInspector(logger, cfg.ScoreIndex)
 		peerScoreParams := params.PeerScoreParams(cfg.Scoring.OneEpochDuration, cfg.MsgIDCacheTTL, cfg.Scoring.IPColocationWeight, 0, cfg.Scoring.IPWhilelist...)
-		logger.Debug("rvrt: peer score params", zap.Any("params", peerScoreParams))
+		logger.Debug("rvrt: peer score params",
+			zap.Bool("skipAtomicValidation", peerScoreParams.SkipAtomicValidation),
+			zap.Float64("topicScoreCap", peerScoreParams.TopicScoreCap),
+			zap.Float64("appSpecificWeight", peerScoreParams.AppSpecificWeight),
+			zap.Float64("ipColocationFactorWeight", peerScoreParams.IPColocationFactorWeight),
+			zap.Int("ipColocationFactorThreshold", peerScoreParams.IPColocationFactorThreshold),
+			zap.Float64("behaviourPenaltyWeight", peerScoreParams.BehaviourPenaltyWeight),
+			zap.Float64("behaviourPenaltyThreshold", peerScoreParams.BehaviourPenaltyThreshold),
+			zap.Float64("behaviourPenaltyDecay", peerScoreParams.BehaviourPenaltyDecay),
+			zap.Duration("decayInterval", peerScoreParams.DecayInterval),
+			zap.Float64("decayToZero", peerScoreParams.DecayToZero),
+			zap.Duration("retainScore", peerScoreParams.RetainScore),
+			zap.Duration("seenMsgTTL", peerScoreParams.SeenMsgTTL),
+		)
+
 		psOpts = append(psOpts, pubsub.WithPeerScore(peerScoreParams, params.PeerScoreThresholds()),
 			pubsub.WithPeerScoreInspect(inspector, scoreInspectInterval))
 		async.Interval(ctx, time.Hour, func() {
