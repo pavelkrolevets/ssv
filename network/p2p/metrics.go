@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/bloxapp/ssv/logging/fields"
+	"github.com/bloxapp/ssv/network/records"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/prometheus/client_golang/prometheus"
@@ -92,7 +93,7 @@ func (n *p2pNetwork) reportTopicPeers(logger *zap.Logger, name string) {
 }
 
 func (n *p2pNetwork) reportPeerIdentity(logger *zap.Logger, pid peer.ID) {
-	opPKHash, opIndex, forkv, nodeVersion, nodeType := unknown, unknown, unknown, unknown, unknown
+	opPKHash, opIndex, forkv, nodeVersion, nodeType, subnetCount := unknown, unknown, unknown, unknown, unknown, unknown
 	ni, err := n.idx.GetNodeInfo(pid)
 	if err == nil && ni != nil {
 		opPKHash = unknown
@@ -105,6 +106,18 @@ func (n *p2pNetwork) reportPeerIdentity(logger *zap.Logger, pid peer.ID) {
 		nodeType = "operator"
 		if len(opPKHash) == 0 && nodeVersion != unknown {
 			nodeType = "exporter"
+		}
+		subnets, err := records.Subnets{}.FromString(ni.Metadata.Subnets)
+		if err != nil {
+			subnetCount = "error"
+		} else {
+			n := 0
+			for _, active := range subnets {
+				if active == 1 {
+					n++
+				}
+			}
+			subnetCount = strconv.Itoa(n)
 		}
 	}
 
@@ -138,7 +151,7 @@ func (n *p2pNetwork) reportPeerIdentity(logger *zap.Logger, pid peer.ID) {
 		zap.String("nodeType", nodeType),
 		zap.String("nodeState", nodeState.String()),
 	)
-	MetricsPeersIdentity.WithLabelValues(opPKHash, opIndex, nodeVersion, pid.String(), nodeType).Set(1)
+	MetricsPeersIdentity.WithLabelValues(opPKHash, opIndex, nodeVersion, pid.String(), nodeType, subnetCount).Set(1)
 }
 
 //
