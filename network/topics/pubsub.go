@@ -131,6 +131,7 @@ func NewPubsub(ctx context.Context, logger *zap.Logger, cfg *PububConfig, fork f
 		cfg.initScoring()
 		inspector := scoreInspector(logger, cfg.ScoreIndex)
 		peerScoreParams := params.PeerScoreParams(cfg.Scoring.OneEpochDuration, cfg.MsgIDCacheTTL, cfg.Scoring.IPColocationWeight, 0, cfg.Scoring.IPWhilelist...)
+		logger.Debug("rvrt: peer score params", zap.Any("params", peerScoreParams))
 		psOpts = append(psOpts, pubsub.WithPeerScore(peerScoreParams, params.PeerScoreThresholds()),
 			pubsub.WithPeerScoreInspect(inspector, scoreInspectInterval))
 		async.Interval(ctx, time.Hour, func() {
