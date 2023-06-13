@@ -88,11 +88,86 @@ func (ctrl *topicsCtrl) onNewTopic(logger *zap.Logger) onTopicJoined {
 		}
 		if ctrl.scoreParamsFactory != nil {
 			if p := ctrl.scoreParamsFactory(name); p != nil {
-				logger.Debug("using scoring params for topic", zap.String("topic", name), zap.Any("params", p))
-				if err := topic.SetScoreParams(p); err != nil {
-					// logger.Warn("could not set topic score params", zap.String("topic", name), zap.Error(err))
-					logger.Warn("could not set topic score params", zap.String("topic", name), zap.Error(err))
-				}
+
+				// // whether it is allowed to just set some params and not all of them.
+				// SkipAtomicValidation bool
+
+				// // The weight of the topic.
+				// TopicWeight float64
+
+				// // P1: time in the mesh
+				// // This is the time the peer has been grafted in the mesh.
+				// // The value of the parameter is the time/TimeInMeshQuantum, capped by TimeInMeshCap.
+				// // The weight of the parameter MUST be positive (or zero to disable).
+				// TimeInMeshWeight  float64
+				// TimeInMeshQuantum time.Duration
+				// TimeInMeshCap     float64
+
+				// // P2: first message deliveries
+				// // This is the number of message deliveries in the topic.
+				// // The value of the parameter is a counter, decaying with FirstMessageDeliveriesDecay, and capped
+				// // by FirstMessageDeliveriesCap.
+				// // The weight of the parameter MUST be positive (or zero to disable).
+				// FirstMessageDeliveriesWeight, FirstMessageDeliveriesDecay float64
+				// FirstMessageDeliveriesCap                                 float64
+
+				// // P3: mesh message deliveries
+				// // This is the number of message deliveries in the mesh, within the MeshMessageDeliveriesWindow of
+				// // message validation; deliveries during validation also count and are retroactively applied
+				// // when validation succeeds.
+				// // This window accounts for the minimum time before a hostile mesh peer trying to game the score
+				// // could replay back a valid message we just sent them.
+				// // It effectively tracks first and near-first deliveries, i.e., a message seen from a mesh peer
+				// // before we have forwarded it to them.
+				// // The parameter has an associated counter, decaying with MeshMessageDeliveriesDecay.
+				// // If the counter exceeds the threshold, its value is 0.
+				// // If the counter is below the MeshMessageDeliveriesThreshold, the value is the square of
+				// // the deficit, ie (MessageDeliveriesThreshold - counter)^2
+				// // The penalty is only activated after MeshMessageDeliveriesActivation time in the mesh.
+				// // The weight of the parameter MUST be negative (or zero to disable).
+				// MeshMessageDeliveriesWeight, MeshMessageDeliveriesDecay      float64
+				// MeshMessageDeliveriesCap, MeshMessageDeliveriesThreshold     float64
+				// MeshMessageDeliveriesWindow, MeshMessageDeliveriesActivation time.Duration
+
+				// // P3b: sticky mesh propagation failures
+				// // This is a sticky penalty that applies when a peer gets pruned from the mesh with an active
+				// // mesh message delivery penalty.
+				// // The weight of the parameter MUST be negative (or zero to disable)
+				// MeshFailurePenaltyWeight, MeshFailurePenaltyDecay float64
+
+				// // P4: invalid messages
+				// // This is the number of invalid messages in the topic.
+				// // The value of the parameter is the square of the counter, decaying with
+				// // InvalidMessageDeliveriesDecay.
+				// // The weight of the parameter MUST be negative (or zero to disable).
+				// InvalidMessageDeliveriesWeight, InvalidMessageDeliveriesDecay float64
+
+				logger.Debug("using scoring params for topic",
+					zap.String("topic", name),
+					zap.Any("params", p),
+					zap.Bool("skipAtomicValidation", p.SkipAtomicValidation),
+					zap.Float64("topicWeight", p.TopicWeight),
+					zap.Float64("timeInMeshWeight", p.TimeInMeshWeight),
+					zap.Duration("timeInMeshQuantum", p.TimeInMeshQuantum),
+					zap.Float64("timeInMeshCap", p.TimeInMeshCap),
+					zap.Float64("firstMessageDeliveriesWeight", p.FirstMessageDeliveriesWeight),
+					zap.Float64("firstMessageDeliveriesDecay", p.FirstMessageDeliveriesDecay),
+					zap.Float64("firstMessageDeliveriesCap", p.FirstMessageDeliveriesCap),
+					zap.Float64("meshMessageDeliveriesWeight", p.MeshMessageDeliveriesWeight),
+					zap.Float64("meshMessageDeliveriesDecay", p.MeshMessageDeliveriesDecay),
+					zap.Float64("meshMessageDeliveriesCap", p.MeshMessageDeliveriesCap),
+					zap.Float64("meshMessageDeliveriesThreshold", p.MeshMessageDeliveriesThreshold),
+					zap.Duration("meshMessageDeliveriesWindow", p.MeshMessageDeliveriesWindow),
+					zap.Duration("meshMessageDeliveriesActivation", p.MeshMessageDeliveriesActivation),
+					zap.Float64("meshFailurePenaltyWeight", p.MeshFailurePenaltyWeight),
+					zap.Float64("meshFailurePenaltyDecay", p.MeshFailurePenaltyDecay),
+					zap.Float64("invalidMessageDeliveriesWeight", p.InvalidMessageDeliveriesWeight),
+					zap.Float64("invalidMessageDeliveriesDecay", p.InvalidMessageDeliveriesDecay),
+				)
+				// if err := topic.SetScoreParams(p); err != nil {
+				// 	// logger.Warn("could not set topic score params", zap.String("topic", name), zap.Error(err))
+				// 	logger.Warn("could not set topic score params", zap.String("topic", name), zap.Error(err))
+				// }
 			}
 		}
 	}
