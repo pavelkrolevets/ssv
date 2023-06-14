@@ -1,0 +1,85 @@
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+namespace: ssv
+
+deploy:
+    - "ssv-node-1"
+    - "ssv-node-2"
+    - "ssv-node-3"
+    - "ssv-node-4"
+    - "ssv-node-5"
+    - "ssv-node-6"
+    - "ssv-node-7"
+    - "ssv-node-8"
+
+nodes:
+  - name: ssv-node-1
+    image: my-image
+    volumeName: ssv-node-v2-3 # TODO: update real values
+    replicas: 1
+    resources:
+        cpu: 1000m
+        mem: 1024Mi
+    env:
+        ports: # TODO: Maybe set global defaults and add +1 with iterations?
+        - name: UDP_PORT
+          value: 12000
+          protocol: UDP
+        - name: TCP_PORT
+          value: 13000
+          protocol: TCP
+        - name: METRICS_API_PORT
+          value: 15000
+          protocol: TCP
+        vars: # TODO: maybe load all default env vars from template and here only override
+          - name: SHARE_CONFIG
+            value: "./data/share.yaml"
+          - name: LOG_LEVEL
+            value: "debug"
+          - name: DEBUG_SERVICES
+            value: "ssv/*."
+          - name: DISCOVERY_TYPE_KEY
+            value: "discv5"
+          - name: NETWORK
+            value: "jato-v2-stage"
+          - name: CONSENSUS_TYPE
+            value: "validation"
+          - name: HOST_DNS
+            value: ""
+          - name: HOST_ADDRESS
+            value: ""
+          - name: DB_PATH
+            value: "./data/db-jato-v2"
+          - name: DB_REPORTING
+            value: "{{ .Values.envs.DB_REPORTING }}"
+          - name: ENABLE_PROFILE
+            value: "true"
+          - name: DISCOVERY_TRACE
+            value: "false"
+          - name: PUBSUB_TRACE
+            value: "false"
+          - name: BUILDER_PROPOSALS
+            value: "true"
+
+
+
+image:
+  repository: 121827225315.dkr.ecr.us-west-2.amazonaws.com/ssv-node
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: latest
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/role
+              operator: In
+              values:
+                - ssv-main
+tolerations:
+  - effect: NoSchedule
+    key: kubernetes.io/role
+    operator: Exists

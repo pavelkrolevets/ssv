@@ -1,0 +1,116 @@
+{{- range $i, $v := .Values.nodes }}
+
+{{if $.Values.deploy | has $v.name }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-{{ $v.name }}-svc
+  namespace: {{ $.Values.namespace }}
+  labels:
+    app: node-{{ $v.name }}
+spec:
+  type: ClusterIP
+  ports: {{- range $j, $p := $v.env.ports }}
+    - port: {{ $p.value }}
+      name: port-{{ $p.value }}
+      targetPort: {{ $p.value }}
+      protocol: {{ $p.protocol }}
+  {{- end }}
+  selector:
+    app: node-{{ $v.name }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: node-{{ $v.name }}
+  name: node-{{ $v.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ $v.replicas }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: node-{{ $v.name }}
+  template:
+    metadata:
+      labels:
+        app: node-{{ $v.name }}
+    spec:
+      containers:
+        - name: node-{{ $v.name }}
+          image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}"
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          resources:
+            limits:
+              cpu:  {{ $v.resources.cpu }}
+              memory: {{ $v.resources.mem }}
+          command: ["make", "start-node"]
+          ports: {{- range $j, $p := $v.env.ports }}
+            - containerPort: {{ $p.value }}
+              name: port-{{ $p.value }}
+              hostPort: {{ $p.value }}
+              protocol: {{ $p.protocol }}
+          {{- end }}
+          env:
+            - name: CONFIG_PATH
+              valueFrom:
+                secretKeyRef:
+                  name: config-secrets
+                  key: config_path
+            - name: BOOTNODES
+              valueFrom:
+                secretKeyRef:
+                  name: config-secrets
+                  key: boot_node
+            - name: REGISTRY_CONTRACT_ADDR_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: config-secrets
+                  key: smart_contract_addr_key
+            - name: ETH_1_SYNC_OFFSET
+              valueFrom:
+                secretKeyRef:
+                  name: config-secrets
+                  key: eth_1_sync_offset
+                  optional: true
+            - name: ABI_VERSION
+              valueFrom:
+                secretKeyRef:
+                  name: config-secrets
+                  key: abi_version
+                  optional: true
+            {{- range $j, $p := $v.env.ports }}
+              name: {{ $p.name }}
+              value: {{ $p.value }}
+            {{- end }}
+            {{- range $j, $vv := $v.env.vars }}
+            - name: {{ $vv.name }}
+              value: {{ $vv.value }}
+            {{- end }}
+          volumeMounts:
+            - mountPath: /data
+              name: {{ $v.volumeName }}
+            - mountPath: /data/share.yaml
+              subPath: share.yaml
+              name: ssv-cm-validator-options-ssv-node-cluster-{{ $v.name }}
+      volumes:
+        - name: {{ $v.volumeName }}
+          persistentVolumeClaim:
+            claimName: ssv-node-v2-1
+        - name: ssv-cm-validator-options-ssv-node-cluster-{{ $v.name }}
+          configMap:
+            name: ssv-cm-validator-options-ssv-node-cluster-{{ $v.name }}
+      hostNetwork: true
+      {{- with $.Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end}}
+  {{- end }}

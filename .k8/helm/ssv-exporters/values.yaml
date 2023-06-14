@@ -1,0 +1,68 @@
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+namespace: blockchain
+
+domain: stage.ssv.network
+
+exporters:
+  - name: ssv-exporter-1
+    image: my-image
+    replicas: 1
+    resources:
+        cpu: 1000m
+        mem: 1024Mi
+    env:
+        ports:
+        - name: UDP_PORT
+          value: 12000
+          protocol: UDP
+        - name: TCP_PORT
+          value: 13000
+          protocol: TCP
+        - name: WS_API_PORT
+          value: 14000
+          protocol: TCP
+        - name: METRICS_API_PORT
+          value: 15000
+          protocol: TCP
+  - name: ssv-exporter-2
+    image: my-image
+    replicas: 1
+    resources:
+      cpu: 1000m
+      mem: 1024Mi
+    env:
+      ports:
+        - name: UDP_PORT
+          value: 12000
+          protocol: UDP
+        - name: TCP_PORT
+          value: 13000
+          protocol: TCP
+        - name: WS_API_PORT
+          value: 14000
+          protocol: TCP
+        - name: METRICS_API_PORT
+          value: 15000
+          protocol: TCP
+
+image:
+  repository: 121827225315.dkr.ecr.us-west-2.amazonaws.com/ssv-node
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: latest
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/role
+              operator: In
+              values:
+                - ssv-main
+tolerations:
+  - effect: NoSchedule
+    key: kubernetes.io/role
+    operator: Exists
