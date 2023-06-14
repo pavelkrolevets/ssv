@@ -2,6 +2,8 @@ package types
 
 import (
 	"encoding/hex"
+	"sync"
+	"time"
 
 	specssv "github.com/bloxapp/ssv-spec/ssv"
 	spectypes "github.com/bloxapp/ssv-spec/types"
@@ -81,4 +83,86 @@ func VerifyReconstructedSignature(sig *bls.Sign, validatorPubKey []byte, root [3
 
 func rootHex(r [32]byte) string {
 	return hex.EncodeToString(r[:])
+}
+
+type SignatureRequest struct {
+	Signature bls.Sign
+	PubKey    bls.PublicKey
+	Message   []byte
+	Result    chan bool
+}
+
+type BatchVerifier struct {
+	workers   int
+	batchSize int
+	timeout   time.Duration
+
+	pending []*SignatureRequest
+	mu      sync.Mutex
+
+	batches chan []*SignatureRequest
+}
+
+func (b *BatchVerifier) AggregateVerify(signature bls.Sign, pks []bls.PublicKey, message []byte) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	pk := pks[0]
+	for i := 1; i < len(pks); i++ {
+		pk.Add(&pks[i])
+	}
+	sr := &SignatureRequest{
+		Signature: signature,
+		PubKey:    pk,
+		Message:   message,
+		Result:    make(chan bool),
+	}
+
+	b.pending = append(b.pending, sr)
+	if len(b.pending) == b.batchSize {
+		b.batches <- b.pending
+		b.pending = nil
+	}
+
+	return <-sr.Result
+}
+
+func (b *BatchVerifier) Run() {
+	for i := 0; i < b.workers; i++ {
+		go b.worker()
+	}
+}
+func (b *BatchVerifier) worker() {
+	for {
+		select {
+		case batch := <-b.batches:
+			sigs := make([]bls.Sign, len(batch))
+			pks := make([]bls.PublicKey, len(batch))
+			msg := make([]byte, len(batch))
+			msgIndex := 0
+			for i, req := range batch {
+				sigs[i] = req.Signature
+				pks[i] = req.PubKey
+				copy(msg[msgIndex:], req.Message)
+				msgIndex += len(req.Message)
+			}
+			if bls.MultiVerify(sigs, pks, msg) {
+				for _, req := range batch {
+					req.Result <- true
+				}
+			} else {
+				// Fallback to individual verification.
+				for _, req := range batch {
+					req.Result <- req.Signature.FastAggregateVerify(pks, msg)
+				}
+			}
+		case <-time.After(b.timeout):
+			b.mu.Lock()
+			batch := b.pending
+			b.pending = nil
+			b.mu.Unlock()
+
+			b.batches <- batch
+		}
+	}
 }
