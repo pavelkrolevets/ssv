@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -30,6 +31,8 @@ import (
 )
 
 func TestSSVMapping(t *testing.T) {
+	runtime.GOMAXPROCS(32)
+
 	types.Verifier = types.NewBatchVerifier(4, 2, 5*time.Millisecond)
 
 	path, _ := os.Getwd()

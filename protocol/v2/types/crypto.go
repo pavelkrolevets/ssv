@@ -115,6 +115,12 @@ type BatchVerifier struct {
 	mu      sync.Mutex
 
 	batches chan []*SignatureRequest
+
+	debug struct {
+		lens [20]int
+		n    int
+		mu   sync.Mutex
+	}
 }
 
 func NewBatchVerifier(workers, batchSize int, timeout time.Duration) *BatchVerifier {
@@ -180,20 +186,14 @@ func (b *BatchVerifier) worker() {
 	}
 }
 
-var (
-	lens = [20]int{}
-	n    = 0
-	mu   sync.Mutex
-)
-
 func (b *BatchVerifier) verify(batch []*SignatureRequest) {
-	mu.Lock()
-	n++
-	lens[n%20] = len(batch)
-	if n%20 == 0 {
-		zap.L().Info("verifying batch", zap.Ints("sizes", lens[:]))
+	b.debug.mu.Lock()
+	b.debug.n++
+	b.debug.lens[b.debug.n%20] = len(batch)
+	if b.debug.n%20 == 0 {
+		zap.L().Info("verifying batch", zap.Ints("sizes", b.debug.lens[:]))
 	}
-	mu.Unlock()
+	b.debug.mu.Unlock()
 
 	if len(batch) == 1 {
 		b.verifySingle(batch[0])
