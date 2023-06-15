@@ -2,8 +2,6 @@ package types
 
 import (
 	"encoding/hex"
-	"log"
-	"runtime"
 	"sync"
 	"time"
 
@@ -11,10 +9,11 @@ import (
 	spectypes "github.com/bloxapp/ssv-spec/types"
 	"github.com/herumi/bls-eth-go-binary/bls"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 )
 
-var verifier = NewBatchVerifier(runtime.NumCPU(), 10, time.Millisecond*5)
+var verifier = NewBatchVerifier(4, 10, time.Millisecond*5)
 
 func init() {
 	go verifier.Run()
@@ -167,7 +166,6 @@ func (b *BatchVerifier) worker() {
 	for {
 		select {
 		case batch := <-b.batches:
-			log.Printf("got a batch of %d signatures", len(batch))
 			b.verify(batch)
 		case <-b.ticker.C:
 			b.mu.Lock()
@@ -176,14 +174,27 @@ func (b *BatchVerifier) worker() {
 			b.mu.Unlock()
 
 			if len(batch) > 0 {
-				log.Printf("sending a batch of %d signatures", len(batch))
 				b.verify(maps.Values(batch))
 			}
 		}
 	}
 }
 
+var (
+	lens = [20]int{}
+	n    = 0
+	mu   sync.Mutex
+)
+
 func (b *BatchVerifier) verify(batch []*SignatureRequest) {
+	mu.Lock()
+	n++
+	lens[n%20] = len(batch)
+	if n%20 == 0 {
+		zap.L().Info("verifying batch", zap.Ints("sizes", lens[:]))
+	}
+	mu.Unlock()
+
 	if len(batch) == 1 {
 		b.verifySingle(batch[0])
 		return

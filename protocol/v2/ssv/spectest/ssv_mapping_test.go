@@ -29,8 +29,6 @@ import (
 )
 
 func TestSSVMapping(t *testing.T) {
-	t.Parallel()
-
 	path, _ := os.Getwd()
 	jsonTests, err := protocoltesting.GetSpecTestJSON(path, "ssv")
 	require.NoError(t, err)

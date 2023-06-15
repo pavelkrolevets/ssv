@@ -22,8 +22,6 @@ import (
 )
 
 func TestQBFTMapping(t *testing.T) {
-	t.Parallel()
-
 	path, _ := os.Getwd()
 	jsonTests, err := protocoltesting.GetSpecTestJSON(path, "qbft")
 	require.NoError(t, err)
