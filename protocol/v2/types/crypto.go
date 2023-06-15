@@ -13,10 +13,10 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-var verifier = NewBatchVerifier(4, 10, time.Millisecond*5)
+var Verifier = NewBatchVerifier(4, 2, time.Millisecond*5)
 
 func init() {
-	go verifier.Run()
+	go Verifier.Run()
 }
 
 // VerifyByOperators verifies signature by the provided operators
@@ -61,7 +61,7 @@ func VerifyByOperators(s spectypes.Signature, data spectypes.MessageSignature, d
 	// if res := sign.FastAggregateVerify(pks, computedRoot[:]); !res {
 	// 	return errors.New("failed to verify signature")
 	// }
-	if res := verifier.AggregateVerify(sign, pks, computedRoot); !res {
+	if res := Verifier.AggregateVerify(sign, pks, computedRoot); !res {
 		return errors.New("failed to verify signature")
 	}
 	return nil

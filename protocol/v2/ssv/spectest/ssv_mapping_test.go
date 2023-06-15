@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bloxapp/ssv-spec/ssv/spectest/tests"
 	"github.com/bloxapp/ssv-spec/ssv/spectest/tests/messages"
@@ -29,6 +30,8 @@ import (
 )
 
 func TestSSVMapping(t *testing.T) {
+	types.Verifier = types.NewBatchVerifier(4, 2, 5*time.Millisecond)
+
 	path, _ := os.Getwd()
 	jsonTests, err := protocoltesting.GetSpecTestJSON(path, "ssv")
 	require.NoError(t, err)
