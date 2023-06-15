@@ -33,7 +33,8 @@ import (
 func TestSSVMapping(t *testing.T) {
 	runtime.GOMAXPROCS(32)
 
-	types.Verifier = types.NewBatchVerifier(4, 2, 5*time.Millisecond)
+	types.Verifier = types.NewBatchVerifier(4, 3, 5*time.Millisecond)
+	types.Verifier.Start()
 
 	path, _ := os.Getwd()
 	jsonTests, err := protocoltesting.GetSpecTestJSON(path, "ssv")

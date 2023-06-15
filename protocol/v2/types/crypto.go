@@ -16,7 +16,7 @@ import (
 var Verifier = NewBatchVerifier(4, 2, time.Millisecond*5)
 
 func init() {
-	go Verifier.Run()
+	go Verifier.Start()
 }
 
 // VerifyByOperators verifies signature by the provided operators
@@ -161,7 +161,7 @@ func (b *BatchVerifier) AggregateVerify(signature *bls.Sign, pks []bls.PublicKey
 	return <-sr.Result
 }
 
-func (b *BatchVerifier) Run() {
+func (b *BatchVerifier) Start() {
 	b.ticker = time.NewTicker(b.timeout)
 	for i := 0; i < b.workers; i++ {
 		go b.worker()
