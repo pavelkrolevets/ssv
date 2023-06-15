@@ -31,11 +31,7 @@ func TestQBFTMapping(t *testing.T) {
 		panic(err.Error())
 	}
 
-	origDomain := types.GetDefaultDomain()
 	types.SetDefaultDomain(testingutils.TestingSSVDomainType)
-	defer func() {
-		types.SetDefaultDomain(origDomain)
-	}()
 
 	for name, test := range untypedTests {
 		name, test := name, test
@@ -51,6 +47,7 @@ func TestQBFTMapping(t *testing.T) {
 			require.NoError(t, json.Unmarshal(byts, &typedTest))
 
 			t.Run(typedTest.TestName(), func(t *testing.T) {
+				t.Parallel()
 				RunMsgProcessing(t, typedTest)
 			})
 		case reflect.TypeOf(&spectests.MsgSpecTest{}).String():
@@ -60,6 +57,7 @@ func TestQBFTMapping(t *testing.T) {
 			require.NoError(t, json.Unmarshal(byts, &typedTest))
 
 			t.Run(typedTest.TestName(), func(t *testing.T) {
+				t.Parallel()
 				RunMsg(t, typedTest)
 			})
 		case reflect.TypeOf(&spectests.ControllerSpecTest{}).String():
@@ -69,6 +67,7 @@ func TestQBFTMapping(t *testing.T) {
 			require.NoError(t, json.Unmarshal(byts, &typedTest))
 
 			t.Run(typedTest.TestName(), func(t *testing.T) {
+				t.Parallel()
 				RunControllerSpecTest(t, typedTest)
 			})
 		case reflect.TypeOf(&spectests.CreateMsgSpecTest{}).String():
@@ -78,6 +77,7 @@ func TestQBFTMapping(t *testing.T) {
 			require.NoError(t, json.Unmarshal(byts, &typedTest))
 
 			t.Run(typedTest.TestName(), func(t *testing.T) {
+				t.Parallel()
 				RunCreateMsg(t, typedTest)
 			})
 		case reflect.TypeOf(&spectests.RoundRobinSpecTest{}).String():
@@ -87,6 +87,7 @@ func TestQBFTMapping(t *testing.T) {
 			require.NoError(t, json.Unmarshal(byts, &typedTest))
 
 			t.Run(typedTest.TestName(), func(t *testing.T) { // using only spec struct so no need to run our version (TODO: check how we choose leader)
+				t.Parallel()
 				typedTest.Run(t)
 			})
 			/*t.Run(typedTest.TestName(), func(t *testing.T) {
@@ -100,6 +101,7 @@ func TestQBFTMapping(t *testing.T) {
 			require.NoError(t, json.Unmarshal(byts, &typedTest))
 
 			t.Run(typedTest.TestName(), func(t *testing.T) {
+				t.Parallel()
 				RunControllerSync(t, typedTest)
 			})
 		case reflect.TypeOf(&timeout.SpecTest{}).String():

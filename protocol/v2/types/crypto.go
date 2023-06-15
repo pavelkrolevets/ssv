@@ -2,6 +2,8 @@ package types
 
 import (
 	"encoding/hex"
+	"log"
+	"runtime"
 	"sync"
 	"time"
 
@@ -9,7 +11,14 @@ import (
 	spectypes "github.com/bloxapp/ssv-spec/types"
 	"github.com/herumi/bls-eth-go-binary/bls"
 	"github.com/pkg/errors"
+	"golang.org/x/exp/maps"
 )
+
+var verifier = NewBatchVerifier(runtime.NumCPU(), 10, time.Millisecond*5)
+
+func init() {
+	go verifier.Run()
+}
 
 // VerifyByOperators verifies signature by the provided operators
 // This is a copy of a function with the same name from the spec, except for it's use of
@@ -50,7 +59,10 @@ func VerifyByOperators(s spectypes.Signature, data spectypes.MessageSignature, d
 	}
 
 	// verify
-	if res := sign.FastAggregateVerify(pks, computedRoot[:]); !res {
+	// if res := sign.FastAggregateVerify(pks, computedRoot[:]); !res {
+	// 	return errors.New("failed to verify signature")
+	// }
+	if res := verifier.AggregateVerify(sign, pks, computedRoot); !res {
 		return errors.New("failed to verify signature")
 	}
 	return nil
@@ -85,10 +97,12 @@ func rootHex(r [32]byte) string {
 	return hex.EncodeToString(r[:])
 }
 
+const messageSize = 32
+
 type SignatureRequest struct {
-	Signature bls.Sign
-	PubKey    bls.PublicKey
-	Message   []byte
+	Signature *bls.Sign
+	PubKeys   []bls.PublicKey
+	Message   [messageSize]byte
 	Result    chan bool
 }
 
@@ -97,72 +111,114 @@ type BatchVerifier struct {
 	batchSize int
 	timeout   time.Duration
 
-	pending []*SignatureRequest
+	ticker  *time.Ticker
+	pending map[[messageSize]byte]*SignatureRequest
 	mu      sync.Mutex
 
 	batches chan []*SignatureRequest
 }
 
-func (b *BatchVerifier) AggregateVerify(signature bls.Sign, pks []bls.PublicKey, message []byte) bool {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	pk := pks[0]
-	for i := 1; i < len(pks); i++ {
-		pk.Add(&pks[i])
+func NewBatchVerifier(workers, batchSize int, timeout time.Duration) *BatchVerifier {
+	return &BatchVerifier{
+		workers:   workers,
+		batchSize: batchSize,
+		timeout:   timeout,
+		pending:   make(map[[messageSize]byte]*SignatureRequest),
+		batches:   make(chan []*SignatureRequest, workers*2),
 	}
+}
+
+func (b *BatchVerifier) AggregateVerify(signature *bls.Sign, pks []bls.PublicKey, message [messageSize]byte) bool {
 	sr := &SignatureRequest{
 		Signature: signature,
-		PubKey:    pk,
+		PubKeys:   pks,
 		Message:   message,
 		Result:    make(chan bool),
 	}
 
-	b.pending = append(b.pending, sr)
+	b.mu.Lock()
+	if _, exists := b.pending[message]; exists {
+		b.mu.Unlock()
+		return signature.FastAggregateVerify(pks, message[:])
+	}
+
+	b.pending[message] = sr
 	if len(b.pending) == b.batchSize {
-		b.batches <- b.pending
-		b.pending = nil
+		batch := b.pending
+		b.pending = make(map[[messageSize]byte]*SignatureRequest)
+		b.mu.Unlock()
+
+		b.batches <- maps.Values(batch)
+	} else {
+		b.mu.Unlock()
 	}
 
 	return <-sr.Result
 }
 
 func (b *BatchVerifier) Run() {
+	b.ticker = time.NewTicker(b.timeout)
 	for i := 0; i < b.workers; i++ {
 		go b.worker()
 	}
 }
+
 func (b *BatchVerifier) worker() {
 	for {
 		select {
 		case batch := <-b.batches:
-			sigs := make([]bls.Sign, len(batch))
-			pks := make([]bls.PublicKey, len(batch))
-			msg := make([]byte, len(batch))
-			msgIndex := 0
-			for i, req := range batch {
-				sigs[i] = req.Signature
-				pks[i] = req.PubKey
-				copy(msg[msgIndex:], req.Message)
-				msgIndex += len(req.Message)
-			}
-			if bls.MultiVerify(sigs, pks, msg) {
-				for _, req := range batch {
-					req.Result <- true
-				}
-			} else {
-				// Fallback to individual verification.
-				for _, req := range batch {
-					req.Result <- req.Signature.FastAggregateVerify(pks, msg)
-				}
-			}
-		case <-time.After(b.timeout):
+			log.Printf("got a batch of %d signatures", len(batch))
+			b.verify(batch)
+		case <-b.ticker.C:
 			b.mu.Lock()
 			batch := b.pending
-			b.pending = nil
+			b.pending = make(map[[messageSize]byte]*SignatureRequest)
 			b.mu.Unlock()
 
-			b.batches <- batch
+			if len(batch) > 0 {
+				log.Printf("sending a batch of %d signatures", len(batch))
+				b.verify(maps.Values(batch))
+			}
 		}
 	}
+}
+
+func (b *BatchVerifier) verify(batch []*SignatureRequest) {
+	if len(batch) == 1 {
+		b.verifySingle(batch[0])
+		return
+	}
+
+	sig := *batch[0].Signature
+	pks := make([]bls.PublicKey, len(batch))
+	msgs := make([]byte, len(batch)*messageSize)
+	for i, req := range batch {
+		if i > 0 {
+			sig.Add(req.Signature)
+		}
+
+		// Aggregate public keys.
+		pk := req.PubKeys[0]
+		for j := 1; j < len(req.PubKeys); j++ {
+			pk.Add(&req.PubKeys[j])
+		}
+		pks[i] = pk
+
+		copy(msgs[messageSize*i:], req.Message[:])
+	}
+	if sig.AggregateVerify(pks, msgs) {
+		for _, req := range batch {
+			req.Result <- true
+		}
+	} else {
+		// Fallback to individual verification.
+		for _, req := range batch {
+			b.verifySingle(req)
+		}
+	}
+}
+
+func (b *BatchVerifier) verifySingle(req *SignatureRequest) {
+	msg := req.Message
+	req.Result <- req.Signature.FastAggregateVerify(req.PubKeys, msg[:])
 }

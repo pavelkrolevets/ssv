@@ -14,6 +14,7 @@ import (
 
 	"github.com/bloxapp/ssv/logging"
 	"github.com/bloxapp/ssv/networkconfig"
+	"github.com/bloxapp/ssv/protocol/v2/types"
 	"github.com/bloxapp/ssv/utils/threshold"
 )
 
@@ -221,7 +222,7 @@ func TestSignRoot(t *testing.T) {
 			Message:   msg,
 		}
 
-		err = signed.GetSignature().VerifyByOperators(signed, networkconfig.TestNetwork.Domain, spectypes.QBFTSignatureType, []*spectypes.Operator{{OperatorID: spectypes.OperatorID(1), PubKey: pk.Serialize()}})
+		err = types.VerifyByOperators(signed.GetSignature(), signed, networkconfig.TestNetwork.Domain, spectypes.QBFTSignatureType, []*spectypes.Operator{{OperatorID: spectypes.OperatorID(1), PubKey: pk.Serialize()}})
 		// res, err := signed.VerifySig(pk)
 		require.NoError(t, err)
 		// require.True(t, res)
@@ -250,7 +251,96 @@ func TestSignRoot(t *testing.T) {
 			Message:   msg,
 		}
 
-		err = signed.GetSignature().VerifyByOperators(signed, networkconfig.TestNetwork.Domain, spectypes.QBFTSignatureType, []*spectypes.Operator{{OperatorID: spectypes.OperatorID(1), PubKey: pk.Serialize()}})
+		err = types.VerifyByOperators(signed.GetSignature(), signed, networkconfig.TestNetwork.Domain, spectypes.QBFTSignatureType, []*spectypes.Operator{{OperatorID: spectypes.OperatorID(1), PubKey: pk.Serialize()}})
+		// res, err := signed.VerifySig(pk)
+		require.NoError(t, err)
+		// require.True(t, res)
+	})
+
+	t.Run("multiple signers", func(t *testing.T) {
+		pk1 := &bls.PublicKey{}
+		require.NoError(t, pk1.Deserialize(_byteArray(pk1Str)))
+		pk2 := &bls.PublicKey{}
+		require.NoError(t, pk2.Deserialize(_byteArray(pk2Str)))
+
+		go func() {
+			msg := specqbft.Message{
+				MsgType:    specqbft.CommitMsgType,
+				Height:     specqbft.Height(1),
+				Round:      specqbft.Round(3),
+				Identifier: []byte("identifier2"),
+				Root:       [32]byte{4, 5, 6},
+			}
+
+			// sign
+			sig1, err := km.SignRoot(&msg, spectypes.QBFTSignatureType, pk1.Serialize())
+			require.NoError(t, err)
+			sign1 := &bls.Sign{}
+			err = sign1.Deserialize(sig1)
+			require.NoError(t, err)
+
+			sig2, err := km.SignRoot(&msg, spectypes.QBFTSignatureType, pk2.Serialize())
+			require.NoError(t, err)
+			sign2 := &bls.Sign{}
+			err = sign2.Deserialize(sig2)
+			require.NoError(t, err)
+
+			sign := sign1
+			sign.Add(sign2)
+
+			// verify
+			signed := &specqbft.SignedMessage{
+				Signature: sign.Serialize(),
+				Signers:   []spectypes.OperatorID{1, 2},
+				Message:   msg,
+			}
+
+			err = types.VerifyByOperators(signed.GetSignature(), signed, networkconfig.TestNetwork.Domain, spectypes.QBFTSignatureType,
+				[]*spectypes.Operator{
+					{OperatorID: spectypes.OperatorID(1), PubKey: pk1.Serialize()},
+					{OperatorID: spectypes.OperatorID(2), PubKey: pk2.Serialize()},
+				})
+			// res, err := signed.VerifySig(pk)
+			require.NoError(t, err)
+			// require.True(t, res)
+		}()
+
+		msg := specqbft.Message{
+			MsgType:    specqbft.CommitMsgType,
+			Height:     specqbft.Height(1),
+			Round:      specqbft.Round(3),
+			Identifier: []byte("identifier2"),
+			Root:       [32]byte{4, 5, 6},
+		}
+
+		// sign
+		sig1, err := km.SignRoot(&msg, spectypes.QBFTSignatureType, pk1.Serialize())
+		require.NoError(t, err)
+		sign1 := &bls.Sign{}
+		err = sign1.Deserialize(sig1)
+		require.NoError(t, err)
+
+		sig2, err := km.SignRoot(&msg, spectypes.QBFTSignatureType, pk2.Serialize())
+		require.NoError(t, err)
+		sign2 := &bls.Sign{}
+		err = sign2.Deserialize(sig2)
+		require.NoError(t, err)
+
+		sign := *sign1
+		sign.Add(sign2)
+
+		// verify
+		signed := &specqbft.SignedMessage{
+			Signature: sign.Serialize(),
+			Signers:   []spectypes.OperatorID{1, 2},
+			Message:   msg,
+		}
+
+		err = types.VerifyByOperators(signed.GetSignature(), signed, networkconfig.TestNetwork.Domain, spectypes.QBFTSignatureType,
+			[]*spectypes.Operator{
+				{OperatorID: spectypes.OperatorID(1), PubKey: pk1.Serialize()},
+				{OperatorID: spectypes.OperatorID(2), PubKey: pk2.Serialize()},
+			})
 		// res, err := signed.VerifySig(pk)
 		require.NoError(t, err)
 		// require.True(t, res)

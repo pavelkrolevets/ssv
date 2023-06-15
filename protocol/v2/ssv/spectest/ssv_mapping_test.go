@@ -2,7 +2,6 @@ package spectest
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -41,19 +40,13 @@ func TestSSVMapping(t *testing.T) {
 		panic(err.Error())
 	}
 
-	origDomain := types.GetDefaultDomain()
 	types.SetDefaultDomain(testingutils.TestingSSVDomainType)
-	defer func() {
-		types.SetDefaultDomain(origDomain)
-	}()
 
 	for name, test := range untypedTests {
 		name, test := name, test
 
 		testName := strings.Split(name, "_")[1]
 		testType := strings.Split(name, "_")[0]
-
-		fmt.Printf("--------- %s - %s \n", testType, testName)
 
 		switch testType {
 		case reflect.TypeOf(&tests.MsgProcessingSpecTest{}).String():
@@ -69,21 +62,21 @@ func TestSSVMapping(t *testing.T) {
 			require.NoError(t, json.Unmarshal(byts, &typedTest))
 
 			t.Run(typedTest.TestName(), func(t *testing.T) {
+				t.Parallel()
 				RunMsgProcessing(t, typedTest)
 			})
 		case reflect.TypeOf(&tests.MultiMsgProcessingSpecTest{}).String():
-			subtests := test.(map[string]interface{})["Tests"].([]interface{})
-			typedTests := make([]*MsgProcessingSpecTest, 0)
-			for _, subtest := range subtests {
-				typedTests = append(typedTests, msgProcessingSpecTestFromMap(t, subtest.(map[string]interface{})))
-			}
-
 			typedTest := &MultiMsgProcessingSpecTest{
-				Name:  test.(map[string]interface{})["Name"].(string),
-				Tests: typedTests,
+				Name: test.(map[string]interface{})["Name"].(string),
 			}
 
 			t.Run(typedTest.TestName(), func(t *testing.T) {
+				t.Parallel()
+
+				subtests := test.(map[string]interface{})["Tests"].([]interface{})
+				for _, subtest := range subtests {
+					typedTest.Tests = append(typedTest.Tests, msgProcessingSpecTestFromMap(t, subtest.(map[string]interface{})))
+				}
 				typedTest.Run(t)
 			})
 		case reflect.TypeOf(&messages.MsgSpecTest{}).String(): // no use of internal structs so can run as spec test runs
@@ -93,6 +86,7 @@ func TestSSVMapping(t *testing.T) {
 			require.NoError(t, json.Unmarshal(byts, &typedTest))
 
 			t.Run(typedTest.TestName(), func(t *testing.T) {
+				t.Parallel()
 				typedTest.Run(t)
 			})
 		case reflect.TypeOf(&valcheck.SpecTest{}).String(): // no use of internal structs so can run as spec test runs TODO: need to use internal signer
@@ -102,6 +96,7 @@ func TestSSVMapping(t *testing.T) {
 			require.NoError(t, json.Unmarshal(byts, &typedTest))
 
 			t.Run(typedTest.TestName(), func(t *testing.T) {
+				t.Parallel()
 				typedTest.Run(t)
 			})
 		case reflect.TypeOf(&valcheck.MultiSpecTest{}).String(): // no use of internal structs so can run as spec test runs TODO: need to use internal signer
@@ -111,6 +106,7 @@ func TestSSVMapping(t *testing.T) {
 			require.NoError(t, json.Unmarshal(byts, &typedTest))
 
 			t.Run(typedTest.TestName(), func(t *testing.T) {
+				t.Parallel()
 				typedTest.Run(t)
 			})
 		case reflect.TypeOf(&synccommitteeaggregator.SyncCommitteeAggregatorProofSpecTest{}).String(): // no use of internal structs so can run as spec test runs TODO: need to use internal signer
@@ -120,21 +116,21 @@ func TestSSVMapping(t *testing.T) {
 			require.NoError(t, json.Unmarshal(byts, &typedTest))
 
 			t.Run(typedTest.TestName(), func(t *testing.T) {
+				t.Parallel()
 				RunSyncCommitteeAggProof(t, typedTest)
 			})
 		case reflect.TypeOf(&newduty.MultiStartNewRunnerDutySpecTest{}).String():
-			subtests := test.(map[string]interface{})["Tests"].([]interface{})
-			typedTests := make([]*StartNewRunnerDutySpecTest, 0)
-			for _, subtest := range subtests {
-				typedTests = append(typedTests, newRunnerDutySpecTestFromMap(t, subtest.(map[string]interface{})))
-			}
-
 			typedTest := &MultiStartNewRunnerDutySpecTest{
-				Name:  test.(map[string]interface{})["Name"].(string),
-				Tests: typedTests,
+				Name: test.(map[string]interface{})["Name"].(string),
 			}
 
 			t.Run(typedTest.TestName(), func(t *testing.T) {
+				t.Parallel()
+
+				subtests := test.(map[string]interface{})["Tests"].([]interface{})
+				for _, subtest := range subtests {
+					typedTest.Tests = append(typedTest.Tests, newRunnerDutySpecTestFromMap(t, subtest.(map[string]interface{})))
+				}
 				typedTest.Run(t, logger)
 			})
 		default:

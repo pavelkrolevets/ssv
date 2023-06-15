@@ -30,8 +30,11 @@ func (i *Instance) uponRoundChange(
 		return nil // UponCommit was already called
 	}
 
-	logger = logger.With(fields.Round(i.State.Round),
-		fields.Height(i.State.Height))
+	logger = logger.With(
+		fields.Round(i.State.Round),
+		fields.Height(i.State.Height),
+		zap.Uint64("msg_round", uint64(signedRoundChange.Message.Round)),
+	)
 
 	logger.Debug("🔄 got round change",
 		fields.Root(signedRoundChange.Message.Root),
