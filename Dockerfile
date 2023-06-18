@@ -3,10 +3,10 @@
 #
 FROM golang:1.20 AS preparer
 
-RUN apt-get update                                                        && \
-  DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends \
-  curl git g++ gcc-aarch64-linux-gnu make      \
-  && rm -rf /var/lib/apt/lists/*
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends \
+  curl git g++ gcc-aarch64-linux-gnu make
+RUN rm -rf /var/lib/apt/lists/*
 
 # install jemalloc
 WORKDIR /tmp/jemalloc-temp
