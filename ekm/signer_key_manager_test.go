@@ -1,7 +1,13 @@
 package ekm
 
 import (
+	"fmt"
+	"math/rand"
+	"os"
+	"runtime/pprof"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/attestantio/go-eth2-client/spec/altair"
 	"github.com/attestantio/go-eth2-client/spec/bellatrix"
@@ -9,7 +15,9 @@ import (
 	specqbft "github.com/bloxapp/ssv-spec/qbft"
 	spectypes "github.com/bloxapp/ssv-spec/types"
 	"github.com/herumi/bls-eth-go-binary/bls"
+	"github.com/jamiealquiza/tachymeter"
 	"github.com/prysmaticlabs/go-bitfield"
+	"github.com/sourcegraph/conc/pool"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bloxapp/ssv/logging"
@@ -251,10 +259,14 @@ func TestSignRoot(t *testing.T) {
 			Message:   msg,
 		}
 
-		err = types.VerifyByOperators(signed.GetSignature(), signed, networkconfig.TestNetwork.Domain, spectypes.QBFTSignatureType, []*spectypes.Operator{{OperatorID: spectypes.OperatorID(1), PubKey: pk.Serialize()}})
-		// res, err := signed.VerifySig(pk)
-		require.NoError(t, err)
-		// require.True(t, res)
+		start := time.Now()
+		for i := 0; i < 1000; i++ {
+			err = types.VerifyByOperators(signed.GetSignature(), signed, networkconfig.TestNetwork.Domain, spectypes.QBFTSignatureType, []*spectypes.Operator{{OperatorID: spectypes.OperatorID(1), PubKey: pk.Serialize()}})
+			// res, err := signed.VerifySig(pk)
+			require.NoError(t, err)
+			// require.True(t, res)
+		}
+		fmt.Println(time.Since(start))
 	})
 
 	t.Run("multiple signers", func(t *testing.T) {
@@ -336,13 +348,123 @@ func TestSignRoot(t *testing.T) {
 			Message:   msg,
 		}
 
-		err = types.VerifyByOperators(signed.GetSignature(), signed, networkconfig.TestNetwork.Domain, spectypes.QBFTSignatureType,
-			[]*spectypes.Operator{
-				{OperatorID: spectypes.OperatorID(1), PubKey: pk1.Serialize()},
-				{OperatorID: spectypes.OperatorID(2), PubKey: pk2.Serialize()},
+		start := time.Now()
+		for i := 0; i < 1000; i++ {
+			err = types.VerifyByOperators(signed.GetSignature(), signed, networkconfig.TestNetwork.Domain, spectypes.QBFTSignatureType,
+				[]*spectypes.Operator{
+					{OperatorID: spectypes.OperatorID(1), PubKey: pk1.Serialize()},
+					{OperatorID: spectypes.OperatorID(2), PubKey: pk2.Serialize()},
+				})
+			require.NoError(t, err)
+		}
+		fmt.Println(time.Since(start))
+	})
+
+	t.Run("multiple signers 2", func(t *testing.T) {
+		pk1 := &bls.PublicKey{}
+		require.NoError(t, pk1.Deserialize(_byteArray(pk1Str)))
+		pk2 := &bls.PublicKey{}
+		require.NoError(t, pk2.Deserialize(_byteArray(pk2Str)))
+
+		var N = 25_000
+		var msgs = make([]*specqbft.SignedMessage, N)
+
+		p := pool.New()
+		for i := 0; i < N; i++ {
+			i := i
+			p.Go(func() {
+				msg := specqbft.Message{
+					MsgType:    specqbft.CommitMsgType,
+					Height:     specqbft.Height(rand.Uint64()),
+					Round:      specqbft.Round(3),
+					Identifier: []byte("identifier2"),
+					Root:       [32]byte{4, 5, 6},
+				}
+
+				// sign
+				sig1, err := km.SignRoot(&msg, spectypes.QBFTSignatureType, pk1.Serialize())
+				require.NoError(t, err)
+				sign1 := &bls.Sign{}
+				err = sign1.Deserialize(sig1)
+				require.NoError(t, err)
+
+				sig2, err := km.SignRoot(&msg, spectypes.QBFTSignatureType, pk2.Serialize())
+				require.NoError(t, err)
+				sign2 := &bls.Sign{}
+				err = sign2.Deserialize(sig2)
+				require.NoError(t, err)
+
+				sign := *sign1
+				sign.Add(sign2)
+
+				// verify
+				msgs[i] = &specqbft.SignedMessage{
+					Signature: sign.Serialize(),
+					Signers:   []spectypes.OperatorID{1, 2},
+					Message:   msg,
+				}
 			})
-		// res, err := signed.VerifySig(pk)
+		}
+		p.Wait()
+
+		// var total time.Duration
+		// for j := 0; j < 10; j++ {
+		// 	start := time.Now()
+		// 	p = pool.New()
+		// 	for i := range msgs {
+		// 		signed := msgs[i]
+		// 		p.Go(func() {
+		// 			err := types.VerifyByOperators(signed.GetSignature(), signed, networkconfig.TestNetwork.Domain, spectypes.QBFTSignatureType,
+		// 				[]*spectypes.Operator{
+		// 					{OperatorID: spectypes.OperatorID(1), PubKey: pk1.Serialize()},
+		// 					{OperatorID: spectypes.OperatorID(2), PubKey: pk2.Serialize()},
+		// 				})
+		// 			require.NoError(t, err)
+		// 		})
+		// 	}
+		// 	p.Wait()
+		// 	fmt.Println(time.Since(start))
+		// 	total += time.Since(start)
+		// }
+		// fmt.Println("avg", total/10)
+
+		f, err := os.Create("/home/zippo/Downloads/cpu.pprof")
 		require.NoError(t, err)
-		// require.True(t, res)
+		defer f.Close()
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+
+		var wg sync.WaitGroup
+		duration := time.Millisecond * 12000
+		var total time.Duration
+		start := time.Now()
+		tm := tachymeter.New(&tachymeter.Config{Size: N})
+		for i := 0; i < N; i++ {
+			i := i
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				// Sleep random value between 0 and 12 seconds
+				start := time.Now()
+				sleep := time.Duration(rand.Intn(int(duration)))
+				time.Sleep(sleep)
+
+				signed := msgs[i]
+				err := types.VerifyByOperators(signed.GetSignature(), signed, networkconfig.TestNetwork.Domain, spectypes.QBFTSignatureType,
+					[]*spectypes.Operator{
+						{OperatorID: spectypes.OperatorID(1), PubKey: pk1.Serialize()},
+						{OperatorID: spectypes.OperatorID(2), PubKey: pk2.Serialize()},
+					})
+				require.NoError(t, err)
+				dur := time.Since(start) - sleep
+				total += dur
+				tm.AddTime(dur)
+			}()
+		}
+		wg.Wait()
+		fmt.Println("Total Run Time:", time.Since(start))
+		fmt.Println("Average Latency:", total/time.Duration(N))
+		fmt.Println("Average Batch Size:", types.Verifier.AverageBatchSize())
+		fmt.Println(tm.Calc())
 	})
 }

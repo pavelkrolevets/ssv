@@ -4,12 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"reflect"
-	"runtime"
-	"sort"
 	"strings"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/bloxapp/ssv-spec/ssv/spectest/tests"
 	"github.com/bloxapp/ssv-spec/ssv/spectest/tests/messages"
@@ -18,9 +14,9 @@ import (
 	"github.com/bloxapp/ssv-spec/ssv/spectest/tests/valcheck"
 	spectypes "github.com/bloxapp/ssv-spec/types"
 	"github.com/bloxapp/ssv-spec/types/testingutils"
+	"github.com/sourcegraph/conc/pool"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
-	"golang.org/x/exp/maps"
 
 	"github.com/bloxapp/ssv/logging"
 
@@ -34,9 +30,6 @@ import (
 )
 
 func TestSSVMapping(t *testing.T) {
-	types.Verifier = types.NewBatchVerifier(runtime.NumCPU(), 1, 5*time.Millisecond)
-	types.Verifier.Start()
-
 	path, _ := os.Getwd()
 	jsonTests, err := protocoltesting.GetSpecTestJSON(path, "ssv")
 	require.NoError(t, err)
@@ -50,44 +43,19 @@ func TestSSVMapping(t *testing.T) {
 
 	types.SetDefaultDomain(testingutils.TestingSSVDomainType)
 
-	run := make(chan runnable, 1000)
-
-	concurrency := runtime.NumCPU()
-	testNames := maps.Keys(untypedTests)
-	sort.Strings(testNames)
-	chunkSize := (len(testNames) + concurrency - 1) / concurrency
-
-	var wg sync.WaitGroup
-	wg.Add(concurrency)
-
-	for i := 0; i < concurrency; i++ {
-		go func(i int) {
-			defer wg.Done()
-			start := i * chunkSize
-			end := start + chunkSize
-			if end > len(testNames) {
-				end = len(testNames)
+	p := pool.New()
+	for name, test := range untypedTests {
+		p.Go(func() {
+			r := prepareTest(t, logger, name, test)
+			if r != nil {
+				t.Run(r.name, func(t *testing.T) {
+					t.Parallel()
+					r.test(t)
+				})
 			}
-			for j := start; j < end; j++ {
-				test := untypedTests[testNames[j]]
-				if r := prepareTest(t, logger, testNames[j], test); r != nil {
-					run <- *r
-				}
-			}
-		}(i)
-	}
-	go func() {
-		wg.Wait()
-		close(run)
-	}()
-
-	for test := range run {
-		test := test
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			test.test(t)
 		})
 	}
+	p.Wait()
 }
 
 type runnable struct {
@@ -189,7 +157,6 @@ func prepareTest(t *testing.T, logger *zap.Logger, name string, test interface{}
 		return &runnable{
 			name: typedTest.TestName(),
 			test: func(t *testing.T) {
-
 				subtests := test.(map[string]interface{})["Tests"].([]interface{})
 				for _, subtest := range subtests {
 					typedTest.Tests = append(typedTest.Tests, newRunnerDutySpecTestFromMap(t, subtest.(map[string]interface{})))
