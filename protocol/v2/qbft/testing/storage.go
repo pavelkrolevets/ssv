@@ -2,8 +2,7 @@ package testing
 
 import (
 	"context"
-	"fmt"
-	"time"
+	"sync"
 
 	spectypes "github.com/bloxapp/ssv-spec/types"
 	"go.uber.org/zap"
@@ -13,17 +12,23 @@ import (
 	"github.com/bloxapp/ssv/storage/basedb"
 )
 
+var db basedb.IDb
+var dbOnce sync.Once
+
 func getDB(logger *zap.Logger) basedb.IDb {
-	dbInstance, err := storage.GetStorageFactory(logger, basedb.Options{
-		Type:      "badger-memory",
-		Path:      fmt.Sprintf("/tmp/badger-%d", time.Now().UnixNano()),
-		Reporting: false,
-		Ctx:       context.TODO(),
+	dbOnce.Do(func() {
+		dbInstance, err := storage.GetStorageFactory(logger, basedb.Options{
+			Type:      "badger-memory",
+			Path:      "",
+			Reporting: false,
+			Ctx:       context.TODO(),
+		})
+		if err != nil {
+			panic(err)
+		}
+		db = dbInstance
 	})
-	if err != nil {
-		panic(err)
-	}
-	return dbInstance
+	return db
 }
 
 var allRoles = []spectypes.BeaconRole{

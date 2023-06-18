@@ -445,7 +445,7 @@ func TestSignRoot(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				// Sleep random value between 0 and 12 seconds
-				start := time.Now()
+				start2 := time.Now()
 				sleep := time.Duration(rand.Intn(int(duration)))
 				time.Sleep(sleep)
 
@@ -456,7 +456,7 @@ func TestSignRoot(t *testing.T) {
 						{OperatorID: spectypes.OperatorID(2), PubKey: pk2.Serialize()},
 					})
 				require.NoError(t, err)
-				dur := time.Since(start) - sleep
+				dur := time.Since(start2) - sleep
 				total += dur
 				tm.AddTime(dur)
 			}()
