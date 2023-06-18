@@ -27,7 +27,7 @@ variables:
 # | STAGE |
 # +-------+
 Build stage Docker image:
-  image: docker:20.10.23
+  image: docker:24.0.2
   stage: build
   tags:
     - blox-infra-stage
@@ -92,7 +92,7 @@ Deploy exporter to stage:
 # |     Prod      |
 # +---------------+
 Build prod Docker image:
-  image: docker:20.10.23
+  image: docker:24.0.2
   stage: build
   tags:
     - blox-infra-prod
