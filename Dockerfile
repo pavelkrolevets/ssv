@@ -4,8 +4,8 @@
 FROM golang:1.20.5-bookworm AS preparer
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update
-RUN apt install -yq --no-install-recommends \
+RUN apt-get update
+RUN apt-get install -yq --no-install-recommends \
   curl git bzip2 g++ gcc-aarch64-linux-gnu make
 RUN rm -rf /var/lib/apt/lists/*
 
