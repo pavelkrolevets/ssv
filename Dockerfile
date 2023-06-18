@@ -1,12 +1,12 @@
 #
 # STEP 1: Prepare environment
 #
-FROM golang:1.20 AS preparer
+FROM golang:1.20.5-bookworm AS preparer
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
 RUN apt-get install -yq --no-install-recommends \
-  curl git g++ gcc-aarch64-linux-gnu make
+  curl git bzip2 g++ gcc-aarch64-linux-gnu make
 RUN rm -rf /var/lib/apt/lists/*
 
 # install jemalloc
