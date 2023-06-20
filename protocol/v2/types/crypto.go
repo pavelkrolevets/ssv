@@ -11,6 +11,7 @@ import (
 	spectypes "github.com/bloxapp/ssv-spec/types"
 	"github.com/herumi/bls-eth-go-binary/bls"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 )
 
@@ -217,6 +218,20 @@ func (b *BatchVerifier) AggregateVerify(signature *bls.Sign, pks []bls.PublicKey
 
 // Start launches the worker goroutines.
 func (b *BatchVerifier) Start() {
+	go func() {
+		for {
+			time.Sleep(12 * time.Second)
+			stats := b.Stats()
+			zap.L().Debug("BatchVerifier stats",
+				zap.Float64("average_batch_size", stats.AverageBatchSize),
+				zap.Int("pending_requests", stats.PendingRequests),
+				zap.Int("pending_batches", stats.PendingBatches),
+				zap.Int("busy_workers", stats.BusyWorkers),
+				zap.Any("recent_batch_sizes", stats.RecentBatchSizes),
+			)
+		}
+	}()
+
 	for i := 0; i < b.concurrency; i++ {
 		go b.worker()
 	}
