@@ -1,6 +1,7 @@
 package ekm
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -363,7 +364,7 @@ func TestSignRoot(t *testing.T) {
 	})
 
 	t.Run("multiple signers 2", func(t *testing.T) {
-		t.Skip()
+		// t.Skip()
 
 		pk1 := &bls.PublicKey{}
 		require.NoError(t, pk1.Deserialize(_byteArray(pk1Str)))
@@ -432,7 +433,7 @@ func TestSignRoot(t *testing.T) {
 		// }
 		// fmt.Println("avg", total/10)
 
-		f, err := os.Create("/home/zippo/Downloads/cpu.pprof")
+		f, err := os.Create("/Users/mosherevah/Downloads/cpu.pprof")
 		require.NoError(t, err)
 		defer f.Close()
 		pprof.StartCPUProfile(f)
@@ -468,7 +469,8 @@ func TestSignRoot(t *testing.T) {
 		wg.Wait()
 		fmt.Println("Total Run Time:", time.Since(start))
 		fmt.Println("Average Latency:", total/time.Duration(N))
-		fmt.Println("Average Batch Size:", types.Verifier.AverageBatchSize())
+		b, _ := json.MarshalIndent(types.Verifier.Stats(), "", "  ")
+		fmt.Println("Stats:", string(b))
 		fmt.Println(tm.Calc())
 	})
 }
