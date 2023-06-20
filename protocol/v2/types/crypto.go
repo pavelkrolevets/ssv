@@ -92,7 +92,7 @@ func rootHex(r [32]byte) string {
 	return hex.EncodeToString(r[:])
 }
 
-var Verifier = NewBatchVerifier(runtime.NumCPU(), 50, time.Millisecond*100)
+var Verifier = NewBatchVerifier(runtime.NumCPU(), 10, time.Millisecond*50)
 
 func init() {
 	go Verifier.Start()
@@ -119,9 +119,9 @@ type BatchVerifier struct {
 	batchSize   int
 	timeout     time.Duration
 
-	// timer   *time.Timer // Controls the timeout of the current batch.
-	// started time.Time // Records when the current batch started.
-	ticker  *time.Ticker
+	timer   *time.Timer // Controls the timeout of the current batch.
+	started time.Time   // Records when the current batch started.
+	// ticker  *time.Ticker
 	pending requests
 	mu      sync.Mutex
 
@@ -145,13 +145,13 @@ type BatchVerifier struct {
 //
 // `timeout`: max batch wait time, adjusts based on load (see `adaptiveTimeout`).
 func NewBatchVerifier(concurrency, batchSize int, timeout time.Duration) *BatchVerifier {
-	// nopTimer := time.NewTimer(0)
+	nopTimer := time.NewTimer(0)
 	return &BatchVerifier{
 		concurrency: concurrency,
 		batchSize:   batchSize,
 		timeout:     timeout,
-		// timer:       nopTimer,
-		ticker:  time.NewTicker(timeout),
+		timer:       nopTimer,
+		// ticker:  time.NewTicker(timeout),
 		pending: make(requests),
 		batches: make(chan []*SignatureRequest, concurrency*2),
 	}
@@ -178,8 +178,8 @@ func (b *BatchVerifier) AggregateVerify(signature *bls.Sign, pks []bls.PublicKey
 	b.pending[message] = sr
 	if len(b.pending) == b.batchSize {
 		// Batch size reached: stop the timer and dispatch the batch.
-		// b.timer.Stop()
-		// b.started = time.Time{}
+		b.timer.Stop()
+		b.started = time.Time{}
 		batch := b.pending
 		b.pending = make(requests)
 		b.mu.Unlock()
@@ -187,10 +187,10 @@ func (b *BatchVerifier) AggregateVerify(signature *bls.Sign, pks []bls.PublicKey
 		b.batches <- maps.Values(batch)
 	} else {
 		// Batch has grown: adjust the timer.
-		// b.timer.Stop()
-		// t := b.adaptiveTimeout(len(b.pending))
-		// b.timer.Reset(t)
-		// b.started = time.Now()
+		b.timer.Stop()
+		t := b.adaptiveTimeout(len(b.pending))
+		b.timer.Reset(t)
+		b.started = time.Now()
 		b.mu.Unlock()
 	}
 
@@ -198,23 +198,23 @@ func (b *BatchVerifier) AggregateVerify(signature *bls.Sign, pks []bls.PublicKey
 }
 
 // adaptiveTimeout calculates the timeout based on the proportion of pending requests.
-// func (b *BatchVerifier) adaptiveTimeout(pending int) time.Duration {
-// 	if b.started.IsZero() {
-// 		b.started = time.Now()
-// 	}
-// 	workload := int(b.busyWorkers.Load()) + len(b.batches) + int(float64(pending)/float64(b.batchSize))
-// 	if workload > b.concurrency {
-// 		workload = b.concurrency
-// 	}
-// 	busyness := float64(workload) / float64(b.concurrency) / 2
+func (b *BatchVerifier) adaptiveTimeout(pending int) time.Duration {
+	if b.started.IsZero() {
+		b.started = time.Now()
+	}
+	workload := int(b.busyWorkers.Load()) + len(b.batches) + int(float64(pending)/float64(b.batchSize))
+	if workload > b.concurrency {
+		workload = b.concurrency
+	}
+	busyness := float64(workload) / float64(b.concurrency) / 2
 
-// 	timeLeft := b.timeout - time.Since(b.started)
-// 	if timeLeft <= 0 {
-// 		return 0
-// 	}
-// 	// log.Printf("workload: %d, busyness: %f, timeLeft: %s, adjusted: %s", workload, busyness, timeLeft, time.Duration(busyness*float64(timeLeft)))
-// 	return time.Duration(busyness * float64(timeLeft))
-// }
+	timeLeft := b.timeout - time.Since(b.started)
+	if timeLeft <= 0 {
+		return 0
+	}
+	// log.Printf("workload: %d, busyness: %f, timeLeft: %s, adjusted: %s", workload, busyness, timeLeft, time.Duration(busyness*float64(timeLeft)))
+	return time.Duration(busyness * float64(timeLeft))
+}
 
 // Start launches the worker goroutines.
 func (b *BatchVerifier) Start() {
@@ -243,8 +243,8 @@ func (b *BatchVerifier) worker() {
 		select {
 		case batch := <-b.batches:
 			b.verify(batch)
-		// case <-b.timer.C:
-		case <-b.ticker.C:
+		case <-b.timer.C:
+			// case <-b.ticker.C:
 			// Dispatch the pending requests when the timer expires.
 			b.mu.Lock()
 			batch := b.pending
