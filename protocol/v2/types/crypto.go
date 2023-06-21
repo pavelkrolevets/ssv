@@ -207,7 +207,7 @@ func (b *BatchVerifier) adaptiveTimeout(pending int) time.Duration {
 		workload = b.concurrency
 	}
 	// busyness := float64(workload) / float64(b.concurrency) / 2
-	busyness := float64(workload+1) / float64(b.concurrency) / 2
+	busyness := float64(workload+1) / float64(b.concurrency) * 2
 
 	timeLeft := b.timeout - time.Since(b.started)
 	if timeLeft <= 0 {
