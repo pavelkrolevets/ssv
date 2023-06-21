@@ -5,6 +5,7 @@ import (
 
 	specqbft "github.com/bloxapp/ssv-spec/qbft"
 	spectypes "github.com/bloxapp/ssv-spec/types"
+	"github.com/bloxapp/ssv/logging/fields"
 	"github.com/bloxapp/ssv/network/forks"
 	operatorstorage "github.com/bloxapp/ssv/operator/storage"
 	"github.com/bloxapp/ssv/protocol/v2/ssv/queue"
@@ -43,16 +44,20 @@ func NewSSVMsgValidator(storage operatorstorage.Storage, fork forks.Fork) func(c
 		pmsg.ValidatorData = *msg
 
 		ssvMsg, err := queue.DecodeSSVMessage(zap.NewNop(), msg)
+		if err != nil {
+			zap.L().Debug("invalid: can't decode message", zap.Error(err))
+			return pubsub.ValidationIgnore
+		}
 		switch m := ssvMsg.Body.(type) {
 		case *specqbft.SignedMessage:
 			share := storage.Shares().Get(msg.MsgID.GetPubKey())
 			if share == nil {
-				zap.L().Debug("invalid: share not found", zap.Error(err))
+				zap.L().Debug("msgval: share not found", fields.PubKey(msg.MsgID.GetPubKey()), zap.Error(err))
 				return pubsub.ValidationIgnore
 			}
 			err := types.VerifyByOperators(m.Signature, m, [4]byte{0x00, 0x00, 0x30, 0x12}, spectypes.QBFTSignatureType, share.Committee)
 			if err != nil {
-				zap.L().Debug("invalid: invalid signature", zap.Error(err))
+				zap.L().Debug("msgval: invalid signature", fields.PubKey(msg.MsgID.GetPubKey()), zap.Error(err))
 				return pubsub.ValidationIgnore
 			}
 		}
