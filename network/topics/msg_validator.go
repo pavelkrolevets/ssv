@@ -3,9 +3,15 @@ package topics
 import (
 	"context"
 
+	specqbft "github.com/bloxapp/ssv-spec/qbft"
+	spectypes "github.com/bloxapp/ssv-spec/types"
 	"github.com/bloxapp/ssv/network/forks"
+	operatorstorage "github.com/bloxapp/ssv/operator/storage"
+	"github.com/bloxapp/ssv/protocol/v2/ssv/queue"
+	"github.com/bloxapp/ssv/protocol/v2/types"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"go.uber.org/zap"
 )
 
 // MsgValidatorFunc represents a message validator
@@ -14,7 +20,7 @@ type MsgValidatorFunc = func(ctx context.Context, p peer.ID, msg *pubsub.Message
 // NewSSVMsgValidator creates a new msg validator that validates message structure,
 // and checks that the message was sent on the right topic.
 // TODO: enable post SSZ change, remove logs, break into smaller validators?
-func NewSSVMsgValidator(fork forks.Fork) func(ctx context.Context, p peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
+func NewSSVMsgValidator(storage operatorstorage.Storage, fork forks.Fork) func(ctx context.Context, p peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
 	return func(ctx context.Context, p peer.ID, pmsg *pubsub.Message) pubsub.ValidationResult {
 		topic := pmsg.GetTopic()
 		metricPubsubActiveMsgValidation.WithLabelValues(topic).Inc()
@@ -35,6 +41,22 @@ func NewSSVMsgValidator(fork forks.Fork) func(ctx context.Context, p peer.ID, ms
 			return pubsub.ValidationReject
 		}
 		pmsg.ValidatorData = *msg
+
+		ssvMsg, err := queue.DecodeSSVMessage(zap.NewNop(), msg)
+		switch m := ssvMsg.Body.(type) {
+		case *specqbft.SignedMessage:
+			share := storage.Shares().Get(msg.MsgID.GetPubKey())
+			if share == nil {
+				zap.L().Debug("invalid: share not found", zap.Error(err))
+				return pubsub.ValidationIgnore
+			}
+			err := types.VerifyByOperators(m.Signature, m, [4]byte{0x00, 0x00, 0x30, 0x12}, spectypes.QBFTSignatureType, share.Committee)
+			if err != nil {
+				zap.L().Debug("invalid: invalid signature", zap.Error(err))
+				return pubsub.ValidationIgnore
+			}
+		}
+
 		return pubsub.ValidationAccept
 
 		// Check if the message was sent on the right topic.
