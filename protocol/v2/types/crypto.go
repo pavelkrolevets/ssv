@@ -92,7 +92,7 @@ func rootHex(r [32]byte) string {
 	return hex.EncodeToString(r[:])
 }
 
-var Verifier = NewBatchVerifier(runtime.NumCPU(), 10, time.Millisecond*50)
+var Verifier = NewBatchVerifier(runtime.NumCPU(), 12, time.Millisecond*50)
 
 func init() {
 	go Verifier.Start()
@@ -206,7 +206,8 @@ func (b *BatchVerifier) adaptiveTimeout(pending int) time.Duration {
 	if workload > b.concurrency {
 		workload = b.concurrency
 	}
-	busyness := float64(workload) / float64(b.concurrency) / 2
+	// busyness := float64(workload) / float64(b.concurrency) / 2
+	busyness := float64(workload+1) / float64(b.concurrency) / 2
 
 	timeLeft := b.timeout - time.Since(b.started)
 	if timeLeft <= 0 {
