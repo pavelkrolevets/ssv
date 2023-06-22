@@ -224,7 +224,9 @@ func (b *BatchVerifier) AggregateVerify(signature *bls.Sign, pks []bls.PublicKey
 		b.debug.Unlock()
 
 		dup.PubKeys = append(dup.PubKeys, pks...)
-		dup.Signature.Add(signature)
+		sig := *dup.Signature
+		sig.Add(signature)
+		dup.Signature = &sig
 		dup.Results = append(dup.Results, result)
 		return <-result
 	} else {
