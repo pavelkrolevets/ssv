@@ -141,6 +141,8 @@ type BatchVerifier struct {
 		n          int            // Number of batches processed.
 		reqs       int            // Number of requests processed.
 		dups       int            // Number of duplicate message requests.
+		fails      int            // Number of failed batches.
+		failReqs   int            // Number of requests in failed batches.
 		sync.Mutex                // Mutex to guard access to the debug fields.
 	}
 }
@@ -262,6 +264,8 @@ func (b *BatchVerifier) Start() {
 				zap.Int("pending_batches", stats.PendingBatches),
 				zap.Int("busy_workers", stats.BusyWorkers),
 				zap.Any("recent_batch_sizes", stats.RecentBatchSizes),
+				zap.Int("failed_batches", stats.FailedBatches),
+				zap.Int("failed_requests", stats.FailedRequests),
 			)
 		}
 	}()
@@ -300,6 +304,8 @@ type Stats struct {
 	PendingRequests   int
 	PendingBatches    int
 	BusyWorkers       int
+	FailedBatches     int
+	FailedRequests    int
 	RecentBatchSizes  [32]byte
 }
 
@@ -310,6 +316,8 @@ func (b *BatchVerifier) Stats() (stats Stats) {
 	stats.TotalRequests = b.debug.reqs
 	stats.DuplicateRequests = b.debug.dups
 	stats.TotalBatches = b.debug.n
+	stats.FailedBatches = b.debug.fails
+	stats.FailedRequests = b.debug.failReqs
 
 	// Calculate the average batch size.
 	lens := b.debug.lens[:]
@@ -340,12 +348,6 @@ func (b *BatchVerifier) verify(batch []*SignatureRequest) {
 	b.busyWorkers.Add(1)
 	defer b.busyWorkers.Add(-1)
 
-	// Update the debug fields under lock.
-	b.debug.Lock()
-	b.debug.n++
-	b.debug.lens[b.debug.n%len(b.debug.lens)] = byte(len(batch))
-	b.debug.Unlock()
-
 	if len(batch) == 1 {
 		batch[0].Finish(b.verifySingle(batch[0]))
 		return
@@ -372,6 +374,14 @@ func (b *BatchVerifier) verify(batch []*SignatureRequest) {
 	for _, req := range batch {
 		req.Finish(valid)
 	}
+
+	// Update the debug fields under lock.
+	b.debug.Lock()
+	b.debug.n++
+	b.debug.lens[b.debug.n%len(b.debug.lens)] = byte(len(batch))
+	b.debug.fails++
+	b.debug.failReqs += len(batch)
+	b.debug.Unlock()
 }
 
 // verifySingle verifies a single request and sends the result back via the Result channel.

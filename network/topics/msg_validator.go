@@ -60,6 +60,17 @@ func NewSSVMsgValidator(storage operatorstorage.Storage, fork forks.Fork) func(c
 				zap.L().Debug("msgval: invalid signature", fields.PubKey(msg.MsgID.GetPubKey()), zap.Error(err))
 				return pubsub.ValidationIgnore
 			}
+		case *spectypes.SignedPartialSignatureMessage:
+			share := storage.Shares().Get(msg.MsgID.GetPubKey())
+			if share == nil {
+				zap.L().Debug("msgval: share not found", fields.PubKey(msg.MsgID.GetPubKey()), zap.Error(err))
+				return pubsub.ValidationIgnore
+			}
+			err := types.VerifyByOperators(m.Signature, m, [4]byte{0x00, 0x00, 0x30, 0x12}, spectypes.QBFTSignatureType, share.Committee)
+			if err != nil {
+				zap.L().Debug("msgval: invalid signature", fields.PubKey(msg.MsgID.GetPubKey()), zap.Error(err))
+				return pubsub.ValidationIgnore
+			}
 		}
 
 		return pubsub.ValidationAccept
