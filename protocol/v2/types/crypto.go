@@ -347,7 +347,7 @@ func (b *BatchVerifier) verify(batch []*SignatureRequest) {
 	b.debug.Unlock()
 
 	if len(batch) == 1 {
-		batch[0].Result <- b.verifySingle(batch[0])
+		batch[0].Finish(b.verifySingle(batch[0]))
 		return
 	}
 
@@ -370,7 +370,7 @@ func (b *BatchVerifier) verify(batch []*SignatureRequest) {
 	// Batch verify the signatures.
 	valid := sig.AggregateVerifyNoCheck(pks, msgs)
 	for _, req := range batch {
-		req.Result <- valid
+		req.Finish(valid)
 	}
 }
 
