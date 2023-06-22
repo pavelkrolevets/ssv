@@ -60,18 +60,18 @@ func NewSSVMsgValidator(storage operatorstorage.Storage, fork forks.Fork) func(c
 				msg2, err := fork.DecodeNetworkMsg(pmsg.GetData())
 				if err != nil {
 					// can't decode message
-					// logger.Debug("invalid: can't decode message", zap.Error(err))
+					zap.L().Debug("msgval: can't decode message2", zap.Error(err))
 					reportValidationResult(validationResultEncoding)
 					return pubsub.ValidationReject
 				}
 				ssvMsg2, err := queue.DecodeSSVMessage(zap.NewNop(), msg2)
 				if err != nil {
-					zap.L().Debug("invalid: can't decode message", zap.Error(err))
+					zap.L().Debug("msgval: can't decode signed message2", zap.Error(err))
 					return pubsub.ValidationIgnore
 				}
 				m2, ok := ssvMsg2.Body.(*specqbft.SignedMessage)
 				if !ok {
-					zap.L().Debug("invalid: can't decode message", zap.Error(err))
+					zap.L().Debug("msgval: can't assert message", zap.Error(err))
 					return pubsub.ValidationIgnore
 				}
 
