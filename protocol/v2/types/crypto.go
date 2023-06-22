@@ -133,6 +133,8 @@ type BatchVerifier struct {
 	debug struct {
 		lens       [8 * 1024]byte // Lengths of the batches.
 		n          int            // Number of batches processed.
+		reqs       int            // Number of requests processed.
+		dups       int            // Number of duplicate message requests.
 		sync.Mutex                // Mutex to guard access to the debug fields.
 	}
 }
@@ -172,7 +174,17 @@ func (b *BatchVerifier) AggregateVerify(signature *bls.Sign, pks []bls.PublicKey
 	b.mu.Lock()
 	if _, exists := b.pending[message]; exists {
 		b.mu.Unlock()
+
+		b.debug.Lock()
+		b.debug.reqs++
+		b.debug.dups++
+		b.debug.Unlock()
+
 		return signature.FastAggregateVerify(pks, message[:])
+	} else {
+		b.debug.Lock()
+		b.debug.reqs++
+		b.debug.Unlock()
 	}
 
 	b.pending[message] = sr
@@ -227,6 +239,9 @@ func (b *BatchVerifier) Start() {
 			time.Sleep(12 * time.Second)
 			stats := b.Stats()
 			zap.L().Debug("BatchVerifier stats",
+				zap.Int("total_requests", stats.TotalRequests),
+				zap.Int("duplicate_requests", stats.DuplicateRequests),
+				zap.Int("total_batches", stats.TotalBatches),
 				zap.Float64("average_batch_size", stats.AverageBatchSize),
 				zap.Int("pending_requests", stats.PendingRequests),
 				zap.Int("pending_batches", stats.PendingBatches),
@@ -263,16 +278,23 @@ func (b *BatchVerifier) worker() {
 }
 
 type Stats struct {
-	AverageBatchSize float64
-	PendingRequests  int
-	PendingBatches   int
-	BusyWorkers      int
-	RecentBatchSizes [32]byte
+	TotalRequests     int
+	DuplicateRequests int
+	TotalBatches      int
+	AverageBatchSize  float64
+	PendingRequests   int
+	PendingBatches    int
+	BusyWorkers       int
+	RecentBatchSizes  [32]byte
 }
 
 func (b *BatchVerifier) Stats() (stats Stats) {
 	b.debug.Lock()
 	defer b.debug.Unlock()
+
+	stats.TotalRequests = b.debug.reqs
+	stats.DuplicateRequests = b.debug.dups
+	stats.TotalBatches = b.debug.n
 
 	// Calculate the average batch size.
 	lens := b.debug.lens[:]
