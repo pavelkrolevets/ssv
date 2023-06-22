@@ -105,7 +105,13 @@ type SignatureRequest struct {
 	Signature *bls.Sign
 	PubKeys   []bls.PublicKey
 	Message   [messageSize]byte
-	Result    chan bool // Result is a channel to receive the verification result.
+	Results   []chan bool // Results are sent on these channels.
+}
+
+func (r *SignatureRequest) Finish(result bool) {
+	for _, res := range r.Results {
+		res <- result
+	}
 }
 
 type requests map[[messageSize]byte]*SignatureRequest
@@ -162,17 +168,12 @@ func NewBatchVerifier(concurrency, batchSize int, timeout time.Duration) *BatchV
 // AggregateVerify adds a request to the current batch or verifies it immediately if a similar one exists.
 // It returns the result of the signature verification.
 func (b *BatchVerifier) AggregateVerify(signature *bls.Sign, pks []bls.PublicKey, message [messageSize]byte) bool {
-	sr := &SignatureRequest{
-		Signature: signature,
-		PubKeys:   pks,
-		Message:   message,
-		Result:    make(chan bool),
-	}
+	result := make(chan bool)
 
-	// If an identical message is already pending, verify individually
-	// because AggregateVerify forbids duplicate messages.
+	// If an identical message is already pending, aggregate it's request
+	// with the current one and return the result.
 	b.mu.Lock()
-	if _, exists := b.pending[message]; exists {
+	if dup, exists := b.pending[message]; exists {
 		b.mu.Unlock()
 
 		b.debug.Lock()
@@ -180,13 +181,22 @@ func (b *BatchVerifier) AggregateVerify(signature *bls.Sign, pks []bls.PublicKey
 		b.debug.dups++
 		b.debug.Unlock()
 
-		return signature.FastAggregateVerify(pks, message[:])
+		dup.PubKeys = append(dup.PubKeys, pks...)
+		dup.Signature.Add(signature)
+		dup.Results = append(dup.Results, result)
+		return <-result
 	} else {
 		b.debug.Lock()
 		b.debug.reqs++
 		b.debug.Unlock()
 	}
 
+	sr := &SignatureRequest{
+		Signature: signature,
+		PubKeys:   pks,
+		Message:   message,
+		Results:   []chan bool{result},
+	}
 	b.pending[message] = sr
 	if len(b.pending) == b.batchSize {
 		// Batch size reached: stop the timer and dispatch the batch.
@@ -206,7 +216,12 @@ func (b *BatchVerifier) AggregateVerify(signature *bls.Sign, pks []bls.PublicKey
 		b.mu.Unlock()
 	}
 
-	return <-sr.Result
+	valid := <-result
+	if !valid {
+		// If the batch failed, fall back to individual verification.
+		return b.verifySingle(sr)
+	}
+	return valid
 }
 
 // adaptiveTimeout calculates the timeout based on the proportion of pending requests.
@@ -332,7 +347,7 @@ func (b *BatchVerifier) verify(batch []*SignatureRequest) {
 	b.debug.Unlock()
 
 	if len(batch) == 1 {
-		b.verifySingle(batch[0])
+		batch[0].Result <- b.verifySingle(batch[0])
 		return
 	}
 
@@ -352,20 +367,15 @@ func (b *BatchVerifier) verify(batch []*SignatureRequest) {
 		copy(msgs[messageSize*i:], req.Message[:])
 	}
 
-	// Batch verify the signatures. In case of failure, fallback to individual verification.
-	if sig.AggregateVerifyNoCheck(pks, msgs) {
-		for _, req := range batch {
-			req.Result <- true
-		}
-	} else {
-		for _, req := range batch {
-			b.verifySingle(req)
-		}
+	// Batch verify the signatures.
+	valid := sig.AggregateVerifyNoCheck(pks, msgs)
+	for _, req := range batch {
+		req.Result <- valid
 	}
 }
 
 // verifySingle verifies a single request and sends the result back via the Result channel.
-func (b *BatchVerifier) verifySingle(req *SignatureRequest) {
+func (b *BatchVerifier) verifySingle(req *SignatureRequest) bool {
 	cpy := req.Message
-	req.Result <- req.Signature.FastAggregateVerify(req.PubKeys, cpy[:])
+	return req.Signature.FastAggregateVerify(req.PubKeys, cpy[:])
 }
