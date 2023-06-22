@@ -82,7 +82,7 @@ func VerifyReconstructedSignature(sig *bls.Sign, validatorPubKey []byte, root [3
 	}
 
 	// verify reconstructed sig
-	if res := sig.VerifyByte(&pk, root[:]); !res {
+	if res := Verifier.AggregateVerify(sig, []bls.PublicKey{pk}, root); !res {
 		return errors.New("could not reconstruct a valid signature")
 	}
 	return nil
@@ -92,7 +92,7 @@ func rootHex(r [32]byte) string {
 	return hex.EncodeToString(r[:])
 }
 
-var Verifier = NewBatchVerifier(runtime.NumCPU(), 12, time.Millisecond*50)
+var Verifier = NewBatchVerifier(runtime.NumCPU(), 14, time.Millisecond*50)
 
 func init() {
 	go Verifier.Start()
@@ -121,7 +121,7 @@ type BatchVerifier struct {
 
 	timer   *time.Timer // Controls the timeout of the current batch.
 	started time.Time   // Records when the current batch started.
-	// ticker  *time.Ticker
+	ticker  *time.Ticker
 	pending requests
 	mu      sync.Mutex
 
@@ -151,9 +151,9 @@ func NewBatchVerifier(concurrency, batchSize int, timeout time.Duration) *BatchV
 		batchSize:   batchSize,
 		timeout:     timeout,
 		timer:       nopTimer,
-		// ticker:  time.NewTicker(timeout),
-		pending: make(requests),
-		batches: make(chan []*SignatureRequest, concurrency*2),
+		ticker:      time.NewTicker(timeout),
+		pending:     make(requests),
+		batches:     make(chan []*SignatureRequest, concurrency*2),
 	}
 }
 
@@ -247,8 +247,8 @@ func (b *BatchVerifier) worker() {
 		select {
 		case batch := <-b.batches:
 			b.verify(batch)
-		case <-b.timer.C:
-			// case <-b.ticker.C:
+			// case <-b.timer.C:
+		case <-b.ticker.C:
 			// Dispatch the pending requests when the timer expires.
 			b.mu.Lock()
 			batch := b.pending
