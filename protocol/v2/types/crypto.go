@@ -379,8 +379,10 @@ func (b *BatchVerifier) verify(batch []*SignatureRequest) {
 	b.debug.Lock()
 	b.debug.n++
 	b.debug.lens[b.debug.n%len(b.debug.lens)] = byte(len(batch))
-	b.debug.fails++
-	b.debug.failReqs += len(batch)
+	if !valid {
+		b.debug.fails++
+		b.debug.failReqs += len(batch)
+	}
 	b.debug.Unlock()
 }
 
