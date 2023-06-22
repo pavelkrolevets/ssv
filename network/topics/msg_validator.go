@@ -57,7 +57,32 @@ func NewSSVMsgValidator(storage operatorstorage.Storage, fork forks.Fork) func(c
 			}
 			err := types.VerifyByOperators(m.Signature, m, [4]byte{0x00, 0x00, 0x30, 0x12}, spectypes.QBFTSignatureType, share.Committee)
 			if err != nil {
-				zap.L().Debug("msgval: invalid signature", fields.PubKey(msg.MsgID.GetPubKey()), zap.Error(err))
+				msg2, err := fork.DecodeNetworkMsg(pmsg.GetData())
+				if err != nil {
+					// can't decode message
+					// logger.Debug("invalid: can't decode message", zap.Error(err))
+					reportValidationResult(validationResultEncoding)
+					return pubsub.ValidationReject
+				}
+				ssvMsg2, err := queue.DecodeSSVMessage(zap.NewNop(), msg2)
+				if err != nil {
+					zap.L().Debug("invalid: can't decode message", zap.Error(err))
+					return pubsub.ValidationIgnore
+				}
+				m2, ok := ssvMsg2.Body.(*specqbft.SignedMessage)
+				if !ok {
+					zap.L().Debug("invalid: can't decode message", zap.Error(err))
+					return pubsub.ValidationIgnore
+				}
+
+				zap.L().Debug("msgval: invalid signature",
+					fields.PubKey(msg.MsgID.GetPubKey()),
+					zap.Uint64("consensus_type", uint64(m.Message.MsgType)),
+					zap.Any("signers", m.Signers),
+					zap.Bool("actually_valid", types.SingleVerifyByOperators(m.Signature, m, [4]byte{0x00, 0x00, 0x30, 0x12}, spectypes.QBFTSignatureType, share.Committee) == nil),
+					zap.Bool("actually_valid_reencoded", types.SingleVerifyByOperators(m2.Signature, m2, [4]byte{0x00, 0x00, 0x30, 0x12}, spectypes.QBFTSignatureType, share.Committee) == nil),
+					zap.Error(err),
+				)
 				return pubsub.ValidationIgnore
 			}
 		}
