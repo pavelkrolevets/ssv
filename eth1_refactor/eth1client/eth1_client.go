@@ -92,9 +92,9 @@ func (ec *Eth1Client) FetchHistoricalLogs(ctx context.Context, fromBlock uint64)
 	}
 
 	query := ethereum.FilterQuery{
-		Addresses: []ethcommon.Address{ec.contractAddress},
+		// Addresses: []ethcommon.Address{ec.contractAddress},
 		FromBlock: new(big.Int).SetUint64(fromBlock),
-		ToBlock:   new(big.Int).SetUint64(currentBlock - ec.finalizationOffset),
+		ToBlock:   new(big.Int).SetUint64(currentBlock),
 	}
 
 	// TODO: Instead of FilterLogs it should call a wrapper that calls FilterLogs multiple times and batches results to avoid fetching enormous amount of events.
